@@ -98,6 +98,42 @@ test('sorts by price ascending', function () {
     expect((float) $response->json('data.0.price'))->toBe(100.0);
 });
 
+test('sorts by price descending', function () {
+    $cheap = FlightOfferFactory::make([
+        'price' => 100, 'flightNumber' => 'AA101', 'carrier' => 'AA',
+    ]);
+    $expensive = FlightOfferFactory::make([
+        'price' => 500, 'flightNumber' => 'AA205', 'carrier' => 'AA',
+    ]);
+
+    $resultSet = new ProviderResultSet('ProviderA', [$expensive, $cheap], ProviderStatus::SUCCESS, durationMs: 10);
+
+    $mockProvider = mock(ProviderContract::class);
+    $mockProvider->shouldReceive('name')->andReturn('ProviderA');
+    $mockProvider->shouldReceive('search')->andReturn($resultSet);
+
+    $registry = new ProviderRegistry;
+    $registry->register($mockProvider);
+    $this->app->instance(ProviderRegistry::class, $registry);
+
+    $response = $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=2&sort=price:desc');
+
+    $response->assertOk();
+    expect((float) $response->json('data.0.price'))->toBe(500.0);
+});
+
+test('returns 422 for invalid sort field', function () {
+    $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=2&sort=invalid:asc')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['sort']);
+});
+
+test('returns 422 for invalid sort direction', function () {
+    $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=2&sort=price:up')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['sort']);
+});
+
 test('duration_minutes is present and positive', function () {
     $response = $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=2');
 

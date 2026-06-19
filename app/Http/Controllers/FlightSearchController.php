@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\FlightSearch\Enums\SortDirection;
+use App\FlightSearch\Enums\SortField;
 use App\FlightSearch\Services\SearchService;
 use App\FlightSearch\ValueObjects\SearchRequest;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +22,25 @@ class FlightSearchController extends Controller
             'to' => ['required', 'string', 'size:3'],
             'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'passengers' => ['required', 'integer', 'min:1'],
-            'sort' => ['nullable', 'string'],
+            'sort' => ['nullable', 'string', function ($attribute, $value, $fail): void {
+                $parts = explode(':', strtolower($value), 2);
+                $field = $parts[0];
+                $direction = $parts[1] ?? null;
+
+                try {
+                    SortField::fromString($field);
+                } catch (\InvalidArgumentException) {
+                    $fail('The sort field is invalid. Allowed: price, departure, arrival, stops, duration.');
+                }
+
+                if ($direction !== null) {
+                    try {
+                        SortDirection::from($direction);
+                    } catch (\ValueError) {
+                        $fail('The sort direction is invalid. Allowed: asc, desc.');
+                    }
+                }
+            }],
             'filter.stops' => ['nullable', 'integer', 'min:0'],
             'filter.carrier' => ['nullable', 'string'],
             'filter.max_price' => ['nullable', 'numeric', 'min:0'],
@@ -30,7 +50,7 @@ class FlightSearchController extends Controller
         $sortDirection = null;
 
         if (! empty($validated['sort'])) {
-            $parts = explode(':', $validated['sort'], 2);
+            $parts = explode(':', strtolower($validated['sort']), 2);
             $sortField = $parts[0];
             $sortDirection = $parts[1] ?? null;
         }

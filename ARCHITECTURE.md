@@ -108,7 +108,7 @@ The entire flow is synchronous: HTTP request → controller → service → prov
 
 4. **Test coverage.** Feature and unit tests cover normalizer output, deduplication, sorting, filtering, provider error isolation, and the booking lifecycle. Static analysis (Larastan level 6) is configured for the `app` directory.
 
-5. **Input validation for sort/filter enums.** Today `sort=invalid:asc` throws an `InvalidArgumentException` from the enum. A validation rule returning a 422 with a clear message would be better UX.
+5. **Input validation for filter enums.** `filter[carrier]` and other filters could be tightened further (e.g. enforce IATA codes).
 
 ---
 
