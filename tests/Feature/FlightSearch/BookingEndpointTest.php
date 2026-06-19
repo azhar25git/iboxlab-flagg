@@ -1,30 +1,13 @@
 <?php
 
-use App\FlightSearch\Contracts\ProviderContract;
-use App\FlightSearch\Enums\ProviderStatus;
-use App\FlightSearch\Services\ProviderRegistry;
-use App\FlightSearch\ValueObjects\ProviderResultSet;
+use App\FlightSearch\Services\FlightOfferRepository;
 use App\Models\Booking;
 use Tests\Helpers\FlightOfferFactory;
 
 beforeEach(function () {
     $this->offer = FlightOfferFactory::make();
 
-    $resultSet = new ProviderResultSet(
-        providerName: 'ProviderA',
-        offers: [$this->offer],
-        status: ProviderStatus::SUCCESS,
-        durationMs: 5,
-    );
-
-    $mockProvider = mock(ProviderContract::class);
-    $mockProvider->shouldReceive('name')->andReturn('ProviderA');
-    $mockProvider->shouldReceive('search')->andReturn($resultSet);
-
-    $registry = new ProviderRegistry;
-    $registry->register($mockProvider);
-
-    $this->app->instance(ProviderRegistry::class, $registry);
+    app(FlightOfferRepository::class)->remember($this->offer);
 });
 
 test('creates booking with valid data', function () {
@@ -121,14 +104,7 @@ test('returns 422 for missing flight_id', function () {
 test('booking response includes total_price', function () {
     $this->offer = FlightOfferFactory::make(['price' => 150.00]);
 
-    $resultSet = new ProviderResultSet('ProviderA', [$this->offer], ProviderStatus::SUCCESS, durationMs: 5);
-    $mockProvider = mock(ProviderContract::class);
-    $mockProvider->shouldReceive('name')->andReturn('ProviderA');
-    $mockProvider->shouldReceive('search')->andReturn($resultSet);
-
-    $registry = new ProviderRegistry;
-    $registry->register($mockProvider);
-    $this->app->instance(ProviderRegistry::class, $registry);
+    app(FlightOfferRepository::class)->remember($this->offer);
 
     $response = $this->postJson('/api/bookings', [
         'flight_id' => $this->offer->id,

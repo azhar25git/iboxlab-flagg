@@ -2,6 +2,7 @@
 
 use App\FlightSearch\Contracts\ProviderContract;
 use App\FlightSearch\Enums\ProviderStatus;
+use App\FlightSearch\Services\FlightOfferRepository;
 use App\FlightSearch\Services\ProviderRegistry;
 use App\FlightSearch\Services\SearchService;
 use App\FlightSearch\ValueObjects\FlightOffer;
@@ -50,6 +51,11 @@ function makeRegistryWithOffers(array $providerOffers): ProviderRegistry
     return $registry;
 }
 
+function makeSearchService(ProviderRegistry $registry): SearchService
+{
+    return new SearchService($registry, app(FlightOfferRepository::class));
+}
+
 describe('deduplication', function () {
     test('keeps cheapest offer when same flight from multiple providers', function () {
         $offerA = makeOffer(['provider' => 'ProviderA', 'price' => 410.00]);
@@ -62,7 +68,7 @@ describe('deduplication', function () {
             'ProviderC' => [$offerC],
         ]);
 
-        $service = new SearchService($registry);
+        $service = makeSearchService($registry);
         $response = $service->search(makeSearchRequest());
 
         expect($response->flights)->toHaveCount(1)
@@ -78,7 +84,7 @@ describe('deduplication', function () {
             'ProviderA' => [$offer1, $offer2],
         ]);
 
-        $service = new SearchService($registry);
+        $service = makeSearchService($registry);
         $response = $service->search(makeSearchRequest());
 
         expect($response->flights)->toHaveCount(2);
@@ -94,7 +100,7 @@ describe('sorting', function () {
             'ProviderA' => [$offer1, $offer2],
         ]);
 
-        $service = new SearchService($registry);
+        $service = makeSearchService($registry);
         $response = $service->search(makeSearchRequest());
 
         expect($response->flights[0]->price)->toBe(200.0)
@@ -109,7 +115,7 @@ describe('sorting', function () {
             'ProviderA' => [$offer1, $offer2],
         ]);
 
-        $service = new SearchService($registry);
+        $service = makeSearchService($registry);
         $response = $service->search(makeSearchRequest([
             'sortField' => 'price',
             'sortDirection' => 'desc',
@@ -128,7 +134,7 @@ describe('sorting', function () {
             'ProviderA' => [$offer1, $offer2, $offer3],
         ]);
 
-        $service = new SearchService($registry);
+        $service = makeSearchService($registry);
         $response = $service->search(makeSearchRequest([
             'sortField' => 'stops',
             'sortDirection' => 'asc',
@@ -149,7 +155,7 @@ describe('filtering', function () {
             'ProviderA' => [$direct, $oneStop],
         ]);
 
-        $service = new SearchService($registry);
+        $service = makeSearchService($registry);
         $response = $service->search(makeSearchRequest(['filterStops' => 0]));
 
         expect($response->flights)->toHaveCount(1)
@@ -164,7 +170,7 @@ describe('filtering', function () {
             'ProviderA' => [$ek, $aa],
         ]);
 
-        $service = new SearchService($registry);
+        $service = makeSearchService($registry);
         $response = $service->search(makeSearchRequest(['filterCarrier' => 'AA']));
 
         expect($response->flights)->toHaveCount(1)
@@ -179,7 +185,7 @@ describe('filtering', function () {
             'ProviderA' => [$cheap, $expensive],
         ]);
 
-        $service = new SearchService($registry);
+        $service = makeSearchService($registry);
         $response = $service->search(makeSearchRequest(['filterMaxPrice' => 300.0]));
 
         expect($response->flights)->toHaveCount(1)
@@ -206,7 +212,7 @@ describe('error isolation', function () {
         $registry->register($good);
         $registry->register($broken);
 
-        $service = new SearchService($registry);
+        $service = makeSearchService($registry);
         $response = $service->search(makeSearchRequest());
 
         expect($response->flights)->toHaveCount(1);

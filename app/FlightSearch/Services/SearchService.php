@@ -14,6 +14,7 @@ class SearchService
 {
     public function __construct(
         private readonly ProviderRegistry $registry,
+        private readonly FlightOfferRepository $flights,
     ) {}
 
     public function search(SearchRequest $request): SearchResponse
@@ -28,6 +29,10 @@ class SearchService
         }
 
         $unique = $this->deduplicate($allOffers);
+
+        foreach ($unique as $offer) {
+            $this->flights->remember($offer);
+        }
 
         $unique = $this->filter($unique, $request);
 

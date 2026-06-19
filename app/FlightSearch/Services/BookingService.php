@@ -3,8 +3,6 @@
 namespace App\FlightSearch\Services;
 
 use App\FlightSearch\Enums\BookingStatus;
-use App\FlightSearch\ValueObjects\FlightOffer;
-use App\FlightSearch\ValueObjects\SearchRequest;
 use App\Models\Booking;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
@@ -12,7 +10,7 @@ class BookingService
 {
     public function __construct(
         private readonly ReferenceGenerator $referenceGenerator,
-        private readonly ProviderRegistry $registry,
+        private readonly FlightOfferRepository $flights,
     ) {}
 
     /**
@@ -20,7 +18,7 @@ class BookingService
      */
     public function create(string $flightId, array $passengers): Booking
     {
-        $flight = $this->resolveFlight($flightId);
+        $flight = $this->flights->find($flightId);
 
         if ($flight === null) {
             throw new \InvalidArgumentException('Flight not found for the given identifier.');
@@ -71,30 +69,5 @@ class BookingService
         }
 
         return $booking;
-    }
-
-    private function resolveFlight(string $flightId): ?FlightOffer
-    {
-        foreach ($this->registry->all() as $provider) {
-            $result = $provider->search($this->dummyRequest());
-
-            foreach ($result->offers as $offer) {
-                if ($offer->id === $flightId) {
-                    return $offer;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private function dummyRequest(): SearchRequest
-    {
-        return new SearchRequest(
-            from: 'DAC',
-            to: 'DXB',
-            date: '2026-07-01',
-            passengers: 1,
-        );
     }
 }

@@ -64,11 +64,11 @@ If any provider throws, `SearchService` catches it, logs a `ProviderResultSet` w
 
 ### 6. Flight snapshots are stored at booking time, not looked up later
 
-When a booking is created, `BookingService` re-queries all providers to find the flight by its stable ID, then serializes the full `FlightOffer` into `flight_snapshot` (JSON column on `bookings`).
+When a booking is created, `BookingService` resolves the flight from a short-lived cache populated during search, then serializes the full `FlightOffer` into `flight_snapshot` (JSON column on `bookings`).
 
-**Why re-query.** A real search → booking flow might have seconds between search and purchase. Provider prices can change. By storing the snapshot, the booking is immutable regardless of what the provider returns later. The snapshot is the source of truth for that booking.
+**Why cache.** A real search → booking flow might have seconds between search and purchase. Provider prices can change. By resolving from the cached search result and then storing a snapshot, the booking is immutable regardless of what the provider returns later. The snapshot is the source of truth for that booking. Caching also removes the need for a hardcoded route/date when resolving a flight by its stable ID.
 
-**Why not cache the search result.** In-memory caches add state management. For the mock scenario, re-querying costs nothing. For production, a short-lived cache (60s) keyed by search params would avoid redundant provider calls. The `resolveFlight` method is a private implementation detail of `BookingService` — swapping it for a cache lookup doesn't touch the controller.
+**Why not re-query providers.** The stable ID is a one-way hash; you cannot derive the original route or date from it. Re-querying would require either a hardcoded request (brittle) or re-running the original search. A short-lived cache keyed by flight ID is the simplest correct solution.
 
 ### 7. Passengers are embedded JSON, not a separate table
 
@@ -102,7 +102,7 @@ The entire flow is synchronous: HTTP request → controller → service → prov
 
 1. **Provider timeout enforcement.** Wrap each provider call in a timeout mechanism. Today a hung provider would hang the entire request (mock providers don't hang, but real ones do).
 
-2. **Cache search results.** A 60-second cache keyed by normalized search params avoids redundant provider calls for rapid repeated searches.
+2. **Cache search results by query params.** A 60-second cache keyed by normalized search params (`from|to|date`) avoids redundant provider calls for rapid repeated searches. The current cache is keyed by flight ID for booking resolution.
 
 3. **Structured error messages.** Add machine-readable error codes (`PROVIDER_TIMEOUT`, `PROVIDER_UNREACHABLE`, `PROVIDER_INVALID_RESPONSE`) alongside the generic provider error message.
 
