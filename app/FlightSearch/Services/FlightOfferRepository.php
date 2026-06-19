@@ -17,14 +17,23 @@ class FlightOfferRepository
 
     public function remember(FlightOffer $offer): void
     {
-        $this->cache->put($this->key($offer->id), $offer, self::TTL_SECONDS);
+        $this->cache->put($this->key($offer->id), $offer->toCacheArray(), self::TTL_SECONDS);
     }
 
     public function find(string $id): ?FlightOffer
     {
-        $offer = $this->cache->get($this->key($id));
+        /** @var array<string, mixed>|null $data */
+        $data = $this->cache->get($this->key($id));
 
-        return $offer instanceof FlightOffer ? $offer : null;
+        if (! is_array($data)) {
+            return null;
+        }
+
+        try {
+            return FlightOffer::fromArray($data);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     public function forget(string $id): void

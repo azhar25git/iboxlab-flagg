@@ -21,6 +21,27 @@ readonly class FlightOffer
         public string $providerRawId,
     ) {}
 
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            id: (string) $data['id'],
+            carrier: (string) $data['carrier'],
+            origin: (string) $data['origin'],
+            destination: (string) $data['destination'],
+            departure: (string) $data['departure'],
+            arrival: (string) $data['arrival'],
+            stops: (int) $data['stops'],
+            price: (float) $data['price'],
+            currency: (string) $data['currency'],
+            flightNumber: (string) $data['flight_number'],
+            provider: (string) $data['provider'],
+            providerRawId: (string) $data['provider_raw_id'],
+        );
+    }
+
     public function durationMinutes(): int
     {
         $dep = Carbon::parse($this->departure);
@@ -48,5 +69,15 @@ readonly class FlightOffer
             'flight_number' => $this->flightNumber,
             'provider' => $this->provider,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toCacheArray(): array
+    {
+        return array_merge($this->toArray(), [
+            'provider_raw_id' => $this->providerRawId,
+        ]);
     }
 }
