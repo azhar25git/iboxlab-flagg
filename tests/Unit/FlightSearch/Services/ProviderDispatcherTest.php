@@ -49,9 +49,9 @@ function fixtureC(): array
 
 test('dispatches all providers concurrently and normalizes offers', function () {
     Http::fake([
-        'http://localhost/api/internal/providers/ProviderA/fixtures' => Http::response(fixtureA()),
-        'http://localhost/api/internal/providers/ProviderB/fixtures' => Http::response(fixtureB()),
-        'http://localhost/api/internal/providers/ProviderC/fixtures' => Http::response(fixtureC()),
+        '*api/internal/providers/ProviderA/fixtures*' => Http::response(fixtureA()),
+        '*api/internal/providers/ProviderB/fixtures*' => Http::response(fixtureB()),
+        '*api/internal/providers/ProviderC/fixtures*' => Http::response(fixtureC()),
     ]);
 
     $results = dispatcher()->dispatch(new SearchRequest(
@@ -74,9 +74,9 @@ test('dispatches all providers concurrently and normalizes offers', function () 
 
 test('marks a provider as error on non-successful http response', function () {
     Http::fake([
-        'http://localhost/api/internal/providers/ProviderA/fixtures' => Http::response(fixtureA()),
-        'http://localhost/api/internal/providers/ProviderB/fixtures' => Http::response('Internal Server Error', 500),
-        'http://localhost/api/internal/providers/ProviderC/fixtures' => Http::response(fixtureC()),
+        '*api/internal/providers/ProviderA/fixtures*' => Http::response(fixtureA()),
+        '*api/internal/providers/ProviderB/fixtures*' => Http::response('Internal Server Error', 500),
+        '*api/internal/providers/ProviderC/fixtures*' => Http::response(fixtureC()),
     ]);
 
     $results = dispatcher()->dispatch(new SearchRequest(

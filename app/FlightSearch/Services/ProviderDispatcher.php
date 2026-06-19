@@ -28,12 +28,19 @@ class ProviderDispatcher
         $providers = $this->registry->all();
         $names = array_keys($providers);
 
+        $query = http_build_query([
+            'from' => $request->from,
+            'to' => $request->to,
+            'date' => $request->date,
+            'passengers' => $request->passengers,
+        ]);
+
         $start = hrtime(true);
 
         try {
-            $responses = Http::timeout($timeout)->pool(function (Pool $pool) use ($providers, $baseUrl): void {
+            $responses = Http::timeout($timeout)->pool(function (Pool $pool) use ($providers, $baseUrl, $query): void {
                 foreach ($providers as $provider) {
-                    $pool->as($provider->name())->get($baseUrl.$provider->endpoint());
+                    $pool->as($provider->name())->get($baseUrl.$provider->endpoint().'?'.$query);
                 }
             });
         } catch (ConnectionException $e) {
