@@ -31,6 +31,12 @@ Format code:
 vendor/bin/pint --dirty --format agent
 ```
 
+Static analysis (Larastan level 6):
+
+```bash
+vendor/bin/phpstan analyse --memory-limit=1G
+```
+
 ## API
 
 ### Search flights

@@ -106,7 +106,7 @@ The entire flow is synchronous: HTTP request → controller → service → prov
 
 3. **Structured error messages.** Replace raw exception messages in `errorMessage` with a fixed set of error codes (`PROVIDER_TIMEOUT`, `PROVIDER_UNREACHABLE`, `PROVIDER_INVALID_RESPONSE`).
 
-4. **Test coverage.** The tests directory has only boilerplate. Tests for normalizer output, deduplication logic, sorting, filtering, and booking lifecycle would be the first ones written.
+4. **Test coverage.** Feature and unit tests cover normalizer output, deduplication, sorting, filtering, provider error isolation, and the booking lifecycle. Static analysis (Larastan level 6) is configured for the `app` directory.
 
 5. **Input validation for sort/filter enums.** Today `sort=invalid:asc` throws an `InvalidArgumentException` from the enum. A validation rule returning a 422 with a clear message would be better UX.
 
