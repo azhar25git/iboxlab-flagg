@@ -2,6 +2,7 @@
 
 namespace App\FlightSearch\Services;
 
+use App\FlightSearch\Contracts\ProviderContract;
 use App\FlightSearch\Enums\ProviderStatus;
 use App\FlightSearch\ValueObjects\ProviderResultSet;
 use App\FlightSearch\ValueObjects\SearchRequest;
@@ -19,15 +20,96 @@ class ProviderDispatcher
     /**
      * @return ProviderResultSet[]
      */
+    /**
+     * @return ProviderResultSet[]
+     */
     public function dispatch(SearchRequest $request): array
+    {
+        $providers = $this->registry->all();
+
+        return array_merge(
+            $this->resolveLocal($providers),
+            $this->resolveRemote($request, $providers),
+        );
+    }
+
+    /**
+     * Resolve providers whose endpoint starts with /api/internal/
+     * directly in-process (no HTTP call). This avoids self-deadlock
+     * on single-threaded dev servers.
+     *
+     * @param  array<string, ProviderContract>  $providers
+     * @return ProviderResultSet[]
+     */
+    private function resolveLocal(array $providers): array
+    {
+        $results = [];
+
+        foreach ($providers as $provider) {
+            if (! str_starts_with($provider->endpoint(), '/api/internal/')) {
+                continue;
+            }
+
+            $start = hrtime(true);
+            $offers = [];
+            $normalizationFailures = 0;
+
+            /** @var array<int, array<string, mixed>> $rawOffers */
+            $rawOffers = $provider->fixtures();
+
+            foreach ($rawOffers as $raw) {
+                try {
+                    $offers[] = $provider->normalize($raw);
+                } catch (\Throwable $e) {
+                    report($e);
+                    $normalizationFailures++;
+                }
+            }
+
+            $durationMs = (int) ((hrtime(true) - $start) / 1_000_000);
+
+            $status = match (true) {
+                $normalizationFailures > 0 && count($offers) === 0 => ProviderStatus::ERROR,
+                $normalizationFailures > 0 => ProviderStatus::PARTIAL,
+                default => ProviderStatus::SUCCESS,
+            };
+
+            $results[] = new ProviderResultSet(
+                providerName: $provider->name(),
+                offers: $offers,
+                status: $status,
+                durationMs: $durationMs,
+                errorMessage: $normalizationFailures > 0 ? 'Some provider offers could not be normalized.' : null,
+            );
+        }
+
+        return $results;
+    }
+
+    /**
+     * Resolve external providers via concurrent HTTP calls.
+     *
+     * @param  array<string, ProviderContract>  $providers
+     * @return ProviderResultSet[]
+     */
+    private function resolveRemote(SearchRequest $request, array $providers): array
     {
         $timeout = (int) config('providers.timeout', 5);
         $baseUrl = app()->runningInConsole()
             ? rtrim((string) config('app.url', 'http://localhost'), '/')
             : request()->schemeAndHttpHost();
 
-        $providers = $this->registry->all();
-        $names = array_keys($providers);
+        $remote = array_filter(
+            $providers,
+            fn ($p) => ! str_starts_with($p->endpoint(), '/api/internal/'),
+            ARRAY_FILTER_USE_BOTH,
+        );
+
+        if ($remote === []) {
+            return [];
+        }
+
+        $names = array_keys($remote);
 
         $query = http_build_query([
             'from' => $request->from,
@@ -39,15 +121,14 @@ class ProviderDispatcher
         $start = hrtime(true);
 
         try {
-            $responses = Http::timeout($timeout)->pool(function (Pool $pool) use ($providers, $baseUrl, $query): void {
-                foreach ($providers as $provider) {
+            $responses = Http::timeout($timeout)->pool(function (Pool $pool) use ($remote, $baseUrl, $query): void {
+                foreach ($remote as $provider) {
                     $pool->as($provider->name())->get($baseUrl.$provider->endpoint().'?'.$query);
                 }
             });
         } catch (ConnectionException $e) {
             report($e);
 
-            // The whole pool failed (e.g. DNS / transport issue). Treat every provider as timed out.
             return array_map(
                 fn (string $name): ProviderResultSet => new ProviderResultSet(
                     providerName: $name,
@@ -72,11 +153,11 @@ class ProviderDispatcher
         }
 
         $totalDurationMs = (int) ((hrtime(true) - $start) / 1_000_000);
-        $durationMs = count($providers) > 0 ? (int) ($totalDurationMs / count($providers)) : 0;
+        $durationMs = (int) ($totalDurationMs / max(count($remote), 1));
 
         $results = [];
 
-        foreach ($providers as $provider) {
+        foreach ($remote as $provider) {
             $name = $provider->name();
             $response = $responses[$name] ?? null;
 
