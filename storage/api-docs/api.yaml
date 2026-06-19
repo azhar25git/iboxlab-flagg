@@ -11,7 +11,6 @@ info:
   version: 1.0.0
   contact:
     name: iBox Lab
-    email: career@iboxlab.com
 
 servers:
   - url: http://localhost:8000/api
