@@ -3,7 +3,6 @@
 namespace App\FlightSearch\Services;
 
 use App\FlightSearch\Enums\ProviderStatus;
-use App\FlightSearch\ValueObjects\FlightOffer;
 use App\FlightSearch\ValueObjects\ProviderResultSet;
 use App\FlightSearch\ValueObjects\SearchRequest;
 use Illuminate\Http\Client\ConnectionException;
@@ -103,16 +102,32 @@ class ProviderDispatcher
                 continue;
             }
 
-            $offers = array_map(
-                fn (array $raw): FlightOffer => $provider->normalize($raw),
-                array_values($response->json() ?? []),
-            );
+            /** @var array<int, array<string, mixed>> $rawOffers */
+            $rawOffers = array_values($response->json() ?? []);
+            $offers = [];
+            $normalizationFailures = 0;
+
+            foreach ($rawOffers as $raw) {
+                try {
+                    $offers[] = $provider->normalize($raw);
+                } catch (\Throwable $e) {
+                    report($e);
+                    $normalizationFailures++;
+                }
+            }
+
+            $status = match (true) {
+                $normalizationFailures > 0 && count($offers) === 0 => ProviderStatus::ERROR,
+                $normalizationFailures > 0 => ProviderStatus::PARTIAL,
+                default => ProviderStatus::SUCCESS,
+            };
 
             $results[] = new ProviderResultSet(
                 providerName: $name,
                 offers: $offers,
-                status: ProviderStatus::SUCCESS,
+                status: $status,
                 durationMs: $durationMs,
+                errorMessage: $normalizationFailures > 0 ? 'Some provider offers could not be normalized.' : null,
             );
         }
 

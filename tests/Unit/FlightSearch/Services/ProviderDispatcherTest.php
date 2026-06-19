@@ -93,3 +93,60 @@ test('marks a provider as error on non-successful http response', function () {
         ->and($byName['ProviderC']->status)->toBe(ProviderStatus::SUCCESS)
         ->and($byName['ProviderB']->errorMessage)->toBe('Provider request failed.');
 });
+
+test('isolates normalization failures so one bad offer does not crash the search', function () {
+    Http::fake([
+        '*api/internal/providers/ProviderA/fixtures*' => Http::response(fixtureA()),
+        '*api/internal/providers/ProviderB/fixtures*' => Http::response([
+            ['airline_code' => 'EK', 'origin' => 'DAC', 'destination' => 'DXB',
+                'departure_time' => 'not-a-date', 'arrival_time' => '2026-07-01 06:50',
+                'segments' => 0, 'price' => ['amount' => 399, 'currency' => 'USD'], 'number' => 'EK585'],
+        ]),
+        '*api/internal/providers/ProviderC/fixtures*' => Http::response(fixtureC()),
+    ]);
+
+    $results = dispatcher()->dispatch(new SearchRequest(
+        from: 'DAC',
+        to: 'DXB',
+        date: '2026-07-01',
+        passengers: 1,
+    ));
+
+    $byName = collect($results)->keyBy(fn ($r) => $r->providerName);
+
+    expect($byName['ProviderA']->status)->toBe(ProviderStatus::SUCCESS)
+        ->and($byName['ProviderB']->status)->toBe(ProviderStatus::ERROR)
+        ->and($byName['ProviderC']->status)->toBe(ProviderStatus::SUCCESS);
+});
+
+test('marks provider partial when some offers normalize and others fail', function () {
+    Http::fake([
+        '*api/internal/providers/ProviderA/fixtures*' => Http::response(fixtureA()),
+        '*api/internal/providers/ProviderB/fixtures*' => Http::response([
+            [
+                'airline_code' => 'BS', 'origin' => 'DAC', 'destination' => 'DXB',
+                'departure_time' => '2026-07-01 09:15', 'arrival_time' => '2026-07-01 15:00',
+                'segments' => 1, 'price' => ['amount' => 295, 'currency' => 'USD'], 'number' => 'BS220',
+            ],
+            [
+                'airline_code' => 'EK', 'origin' => 'DAC', 'destination' => 'DXB',
+                'departure_time' => 'malformed', 'arrival_time' => '2026-07-01 06:50',
+                'segments' => 0, 'price' => ['amount' => 399, 'currency' => 'USD'], 'number' => 'EK585',
+            ],
+        ]),
+        '*api/internal/providers/ProviderC/fixtures*' => Http::response(fixtureC()),
+    ]);
+
+    $results = dispatcher()->dispatch(new SearchRequest(
+        from: 'DAC',
+        to: 'DXB',
+        date: '2026-07-01',
+        passengers: 1,
+    ));
+
+    $providerB = collect($results)->first(fn ($r) => $r->providerName === 'ProviderB');
+
+    expect($providerB->status)->toBe(ProviderStatus::PARTIAL)
+        ->and($providerB->offers)->toHaveCount(1)
+        ->and($providerB->errorMessage)->toBe('Some provider offers could not be normalized.');
+});
