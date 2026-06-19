@@ -179,7 +179,7 @@ test('returns 404 when cancelling non-existent booking', function () {
     $cancel->assertNotFound();
 });
 
-test('returns 409 when cancelling already cancelled booking', function () {
+test('double-cancel is idempotent (returns 200)', function () {
     $response = $this->postJson('/api/bookings', [
         'flight_id' => $this->offer->id,
         'passengers' => [
@@ -192,7 +192,8 @@ test('returns 409 when cancelling already cancelled booking', function () {
     $this->postJson("/api/bookings/{$ref}/cancel");
     $second = $this->postJson("/api/bookings/{$ref}/cancel");
 
-    $second->assertStatus(409);
+    $second->assertOk()
+        ->assertJsonPath('data.status', 'cancelled');
 });
 
 test('booking response includes updated_at', function () {

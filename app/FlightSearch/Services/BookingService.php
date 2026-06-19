@@ -50,7 +50,7 @@ class BookingService
         $booking = $this->findOrFail($reference);
 
         if ($booking->status === BookingStatus::CANCELLED->value) {
-            throw new \InvalidArgumentException('Booking is already cancelled.');
+            return $booking;
         }
 
         $booking->update(['status' => BookingStatus::CANCELLED->value]);

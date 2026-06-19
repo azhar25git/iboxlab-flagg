@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\FlightSearch\Services\BookingService;
 use App\Models\Booking;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -41,11 +42,7 @@ class BookingController extends Controller
     {
         try {
             $booking = $this->bookingService->cancel($reference);
-        } catch (\InvalidArgumentException $e) {
-            if ($e->getMessage() === 'Booking is already cancelled.') {
-                return response()->json(['message' => $e->getMessage()], 409);
-            }
-
+        } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Booking not found.'], 404);
         }
 
