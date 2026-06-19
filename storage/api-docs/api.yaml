@@ -1,0 +1,431 @@
+openapi: 3.0.3
+info:
+  title: Flight Search Aggregator
+  description: |
+    Backend API for flight search aggregation. Fans out queries to multiple
+    providers, normalizes results into a canonical model, deduplicates
+    overlapping offers (best price wins), and returns a unified result set
+    with per-provider completeness metadata.
+
+    **Base URL:** `http://localhost:8000/api`
+  version: 1.0.0
+  contact:
+    name: iBox Lab
+    email: career@iboxlab.com
+
+servers:
+  - url: http://localhost:8000/api
+    description: Local development
+
+tags:
+  - name: Flights
+    description: Search across providers
+  - name: Bookings
+    description: Create and retrieve bookings
+
+paths:
+  /flights/search:
+    get:
+      tags: [Flights]
+      summary: Search flights across all providers
+      description: |
+        Queries all registered providers concurrently, normalizes their
+        responses, deduplicates by stable flight identifier (keeping the
+        cheapest offer), applies sorting and filtering, and returns a
+        unified result set with completeness metadata.
+
+        **Sorting:** Use `sort=field:direction`. Valid fields: `price`,
+        `departure`, `arrival`, `stops`. Valid directions: `asc`, `desc`.
+        Default sort is `price:asc`.
+
+        **Filtering:** All filter params are optional. Multiple filters
+        combine with AND logic.
+      operationId: searchFlights
+      parameters:
+        - name: from
+          in: query
+          required: true
+          description: Origin airport (3-letter IATA code)
+          schema:
+            type: string
+            minLength: 3
+            maxLength: 3
+            example: DAC
+        - name: to
+          in: query
+          required: true
+          description: Destination airport (3-letter IATA code)
+          schema:
+            type: string
+            minLength: 3
+            maxLength: 3
+            example: DXB
+        - name: date
+          in: query
+          required: true
+          description: Departure date, today or in the future
+          schema:
+            type: string
+            format: date
+            example: "2026-07-01"
+        - name: passengers
+          in: query
+          required: true
+          description: Number of passengers (minimum 1). Prices are per-passenger.
+          schema:
+            type: integer
+            minimum: 1
+            example: 2
+        - name: sort
+          in: query
+          required: false
+          description: Sort expression (`field:direction`).
+          schema:
+            type: string
+            example: price:asc
+        - name: filter[stops]
+          in: query
+          required: false
+          description: Maximum number of stops (non-stop = 0)
+          schema:
+            type: integer
+            minimum: 0
+            example: 1
+        - name: filter[carrier]
+          in: query
+          required: false
+          description: Filter by airline carrier code
+          schema:
+            type: string
+            example: EK
+        - name: filter[max_price]
+          in: query
+          required: false
+          description: Maximum price per passenger
+          schema:
+            type: number
+            minimum: 0
+            example: 350.00
+      responses:
+        "200":
+          description: Search results with completeness metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+
+  /bookings:
+    post:
+      tags: [Bookings]
+      summary: Create a booking
+      description: |
+        Resolves a flight by its stable identifier, stores a booking with
+        an immutable snapshot of the flight details at booking time, and
+        returns a unique booking reference.
+      operationId: createBooking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [flight_id, passengers]
+              properties:
+                flight_id:
+                  type: string
+                  description: Stable flight identifier from the search response
+                  example: 3de52c486cb7da7b1923f643bece99ed04
+                passengers:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [name, email, date_of_birth]
+                    properties:
+                      name:
+                        type: string
+                        maxLength: 255
+                        example: John Doe
+                      email:
+                        type: string
+                        format: email
+                        maxLength: 255
+                        example: john@example.com
+                      date_of_birth:
+                        type: string
+                        format: date
+                        example: "1990-05-15"
+              example:
+                flight_id: 3de52c486cb7da7b1923f643bece99ed04682b9fc776f5cfa97c51e53d185e37
+                passengers:
+                  - name: John Doe
+                    email: john@example.com
+                    date_of_birth: "1990-05-15"
+      responses:
+        "201":
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+        "404":
+          description: Flight not found for the given identifier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+
+  /bookings/{reference}:
+    get:
+      tags: [Bookings]
+      summary: Retrieve a booking by reference
+      operationId: getBooking
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          description: Booking reference (e.g. IBX-D590)
+          schema:
+            type: string
+            example: IBX-D590
+      responses:
+        "200":
+          description: Booking details including immutable flight snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+        "404":
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    FlightOffer:
+      type: object
+      description: Canonical flight offer
+      properties:
+        id:
+          type: string
+          description: Stable flight identifier (SHA-256 of carrier|flightNo|origin|dest|departureUTC)
+          example: "3de52c486cb7da7b1923f643bece99ed04682b9fc776f5cfa97c51e53d185e37"
+        carrier:
+          type: string
+          description: Airline IATA code
+          example: EK
+        origin:
+          type: string
+          description: Origin airport IATA code
+          example: DAC
+        destination:
+          type: string
+          description: Destination airport IATA code
+          example: DXB
+        departure:
+          type: string
+          format: date-time
+          description: Departure time in UTC ISO-8601
+          example: "2026-07-01T03:45:00+00:00"
+        arrival:
+          type: string
+          format: date-time
+          description: Arrival time in UTC ISO-8601
+          example: "2026-07-01T06:50:00+00:00"
+        stops:
+          type: integer
+          minimum: 0
+          description: Number of stops (0 = non-stop)
+          example: 0
+        price:
+          type: number
+          description: Price per passenger in the given currency
+          example: 399.00
+        currency:
+          type: string
+          description: ISO 4217 currency code
+          example: USD
+        flight_number:
+          type: string
+          description: Airline flight number
+          example: EK585
+        provider:
+          type: string
+          description: Provider that supplied this offer
+          example: ProviderB
+      required:
+        - id
+        - carrier
+        - origin
+        - destination
+        - departure
+        - arrival
+        - stops
+        - price
+        - currency
+        - flight_number
+        - provider
+
+    ProviderMeta:
+      type: object
+      description: Per-provider result completeness metadata
+      properties:
+        name:
+          type: string
+          description: Provider name
+          example: ProviderA
+        status:
+          type: string
+          enum: [success, timeout, error, partial]
+          description: Outcome of this provider's query
+          example: success
+        offers:
+          type: integer
+          minimum: 0
+          description: Number of raw offers returned by this provider
+          example: 4
+        duration_ms:
+          type: integer
+          minimum: 0
+          description: Provider response time in milliseconds
+          example: 12
+      required:
+        - name
+        - status
+        - offers
+        - duration_ms
+
+    SearchResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          description: Deduplicated, sorted, filtered flight offers
+          items:
+            $ref: "#/components/schemas/FlightOffer"
+        meta:
+          type: object
+          properties:
+            providers:
+              type: array
+              description: Per-provider status and counts
+              items:
+                $ref: "#/components/schemas/ProviderMeta"
+            total_offers:
+              type: integer
+              description: Total raw offers across all providers (before dedup)
+              example: 10
+            unique_flights:
+              type: integer
+              description: Unique flights after deduplication
+              example: 6
+          required:
+            - providers
+            - total_offers
+            - unique_flights
+      required:
+        - data
+        - meta
+
+    Passenger:
+      type: object
+      properties:
+        name:
+          type: string
+          example: John Doe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        date_of_birth:
+          type: string
+          format: date
+          example: "1990-05-15"
+      required:
+        - name
+        - email
+        - date_of_birth
+
+    BookingData:
+      type: object
+      description: Booking details
+      properties:
+        reference:
+          type: string
+          description: Unique booking reference (IBX-XXXX)
+          example: IBX-D590
+        flight_id:
+          type: string
+          description: Stable flight identifier at time of booking
+          example: "3de52c486cb7da7b1923f643bece99ed04682b9fc776f5cfa97c51e53d185e37"
+        flight:
+          $ref: "#/components/schemas/FlightOffer"
+        passengers:
+          type: array
+          items:
+            $ref: "#/components/schemas/Passenger"
+        status:
+          type: string
+          enum: [confirmed, cancelled]
+          example: confirmed
+        created_at:
+          type: string
+          format: date-time
+          description: Booking creation timestamp in UTC ISO-8601
+          example: "2026-06-18T15:54:21+00:00"
+      required:
+        - reference
+        - flight_id
+        - flight
+        - passengers
+        - status
+        - created_at
+
+    BookingResponse:
+      type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/BookingData"
+      required:
+        - data
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Booking not found.
+      required:
+        - message
+
+    ValidationError:
+      type: object
+      properties:
+        message:
+          type: string
+          example: The from field is required.
+        errors:
+          type: object
+          description: Field-level validation errors
+          example:
+            from: ["The from field is required."]
+            to: ["The to field is required."]
+            date: ["The date field is required."]
+            passengers: ["The passengers field is required."]
+      required:
+        - message
+        - errors
