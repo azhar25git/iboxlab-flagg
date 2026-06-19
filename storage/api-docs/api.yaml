@@ -198,6 +198,7 @@ paths:
           description: Booking reference (e.g. IBX-D590)
           schema:
             type: string
+            pattern: ^IBX-[A-F0-9]{4}$
             example: IBX-D590
       responses:
         "200":
@@ -235,6 +236,7 @@ paths:
           description: Booking reference (e.g. IBX-D590)
           schema:
             type: string
+            pattern: ^IBX-[A-F0-9]{4}$
             example: IBX-D590
       responses:
         "200":

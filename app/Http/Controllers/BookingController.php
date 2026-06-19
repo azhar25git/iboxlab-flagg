@@ -41,7 +41,7 @@ class BookingController extends Controller
     public function cancel(string $reference): JsonResponse
     {
         validator(['reference' => $reference], [
-            'reference' => 'regex:/^IBX-[A-Z0-9]{4}$/',
+            'reference' => 'regex:/^IBX-[A-F0-9]{4}$/',
         ], ['reference.regex' => 'reference invalid'])->validate();
 
         try {
@@ -58,7 +58,7 @@ class BookingController extends Controller
     public function show(string $reference): JsonResponse
     {
         validator(['reference' => $reference], [
-            'reference' => 'regex:/^IBX-[A-Z0-9]{4}$/',
+            'reference' => 'regex:/^IBX-[A-F0-9]{4}$/',
         ], ['reference.regex' => 'reference invalid'])->validate();
 
         $booking = $this->bookingService->findByReference($reference);
