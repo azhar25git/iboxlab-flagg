@@ -104,7 +104,7 @@ The entire flow is synchronous: HTTP request → controller → service → prov
 
 2. **Cache search results.** A 60-second cache keyed by normalized search params avoids redundant provider calls for rapid repeated searches.
 
-3. **Structured error messages.** Replace raw exception messages in `errorMessage` with a fixed set of error codes (`PROVIDER_TIMEOUT`, `PROVIDER_UNREACHABLE`, `PROVIDER_INVALID_RESPONSE`).
+3. **Structured error messages.** Add machine-readable error codes (`PROVIDER_TIMEOUT`, `PROVIDER_UNREACHABLE`, `PROVIDER_INVALID_RESPONSE`) alongside the generic provider error message.
 
 4. **Test coverage.** Feature and unit tests cover normalizer output, deduplication, sorting, filtering, provider error isolation, and the booking lifecycle. Static analysis (Larastan level 6) is configured for the `app` directory.
 

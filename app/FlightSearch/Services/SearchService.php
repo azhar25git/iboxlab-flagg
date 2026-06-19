@@ -51,11 +51,13 @@ class SearchService
             try {
                 $results[] = $provider->search($request);
             } catch (\Throwable $e) {
+                report($e);
+
                 $results[] = new ProviderResultSet(
                     providerName: $provider->name(),
                     offers: [],
                     status: ProviderStatus::ERROR,
-                    errorMessage: $e->getMessage(),
+                    errorMessage: 'Provider query failed.',
                 );
             }
         }

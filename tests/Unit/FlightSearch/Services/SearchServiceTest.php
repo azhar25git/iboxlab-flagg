@@ -218,6 +218,8 @@ describe('error isolation', function () {
             ->first(fn ($p) => $p['name'] === 'BrokenProvider');
 
         expect($goodMeta['status'])->toBe('success')
-            ->and($brokenMeta['status'])->toBe('error');
+            ->and($brokenMeta['status'])->toBe('error')
+            ->and($brokenMeta['error_message'])->toBe('Provider query failed.')
+            ->and($brokenMeta['error_message'])->not->toContain('Connection refused');
     });
 });

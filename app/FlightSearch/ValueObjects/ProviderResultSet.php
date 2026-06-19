@@ -20,13 +20,22 @@ readonly class ProviderResultSet
     /**
      * @return array<string, mixed>
      */
+    /**
+     * @return array<string, mixed>
+     */
     public function toMetaArray(): array
     {
-        return [
+        $meta = [
             'name' => $this->providerName,
             'status' => $this->status->value,
             'offers' => count($this->offers),
             'duration_ms' => $this->durationMs,
         ];
+
+        if ($this->errorMessage !== null) {
+            $meta['error_message'] = $this->errorMessage;
+        }
+
+        return $meta;
     }
 }
