@@ -1,0 +1,108 @@
+<?php
+
+use App\FlightSearch\Contracts\ProviderContract;
+use App\FlightSearch\Enums\ProviderStatus;
+use App\FlightSearch\Services\ProviderRegistry;
+use App\FlightSearch\ValueObjects\ProviderResultSet;
+use Tests\Helpers\FlightOfferFactory;
+
+beforeEach(function () {
+    $this->offer = FlightOfferFactory::make();
+
+    $resultSet = new ProviderResultSet(
+        providerName: 'ProviderA',
+        offers: [$this->offer],
+        status: ProviderStatus::SUCCESS,
+        durationMs: 10,
+    );
+
+    $mockProvider = mock(ProviderContract::class);
+    $mockProvider->shouldReceive('name')->andReturn('ProviderA');
+    $mockProvider->shouldReceive('search')->andReturn($resultSet);
+
+    $registry = new ProviderRegistry;
+    $registry->register($mockProvider);
+
+    $this->app->instance(ProviderRegistry::class, $registry);
+});
+
+test('returns 200 with search results', function () {
+    $response = $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=2');
+
+    $response->assertOk()
+        ->assertJsonStructure([
+            'data' => [
+                '*' => [
+                    'id', 'carrier', 'origin', 'destination',
+                    'departure', 'arrival', 'stops', 'price',
+                    'currency', 'flight_number', 'provider',
+                ],
+            ],
+            'meta' => [
+                'providers', 'total_offers', 'unique_flights',
+            ],
+        ]);
+});
+
+test('returns 422 for missing required params', function () {
+    $this->getJson('/api/flights/search')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['from', 'to', 'date', 'passengers']);
+});
+
+test('returns 422 for invalid airport codes', function () {
+    $this->getJson('/api/flights/search?from=DA&to=DXB&date=2026-07-01&passengers=2')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['from']);
+
+    $this->getJson('/api/flights/search?from=DAC&to=LONDON&date=2026-07-01&passengers=2')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['to']);
+});
+
+test('returns 422 for past date', function () {
+    $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2020-01-01&passengers=2')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['date']);
+});
+
+test('returns 422 for invalid passengers', function () {
+    $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=0')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['passengers']);
+});
+
+test('sorts by price ascending', function () {
+    $cheap = FlightOfferFactory::make([
+        'price' => 100, 'flightNumber' => 'AA101', 'carrier' => 'AA',
+    ]);
+    $expensive = FlightOfferFactory::make([
+        'price' => 500, 'flightNumber' => 'AA205', 'carrier' => 'AA',
+    ]);
+
+    $resultSet = new ProviderResultSet('ProviderA', [$expensive, $cheap], ProviderStatus::SUCCESS, durationMs: 10);
+
+    $mockProvider = mock(ProviderContract::class);
+    $mockProvider->shouldReceive('name')->andReturn('ProviderA');
+    $mockProvider->shouldReceive('search')->andReturn($resultSet);
+
+    $registry = new ProviderRegistry;
+    $registry->register($mockProvider);
+    $this->app->instance(ProviderRegistry::class, $registry);
+
+    $response = $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=2&sort=price:asc');
+
+    $response->assertOk();
+    expect((float) $response->json('data.0.price'))->toBe(100.0);
+});
+
+test('meta contains completeness info', function () {
+    $response = $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=2');
+
+    $response->assertOk();
+    $meta = $response->json('meta');
+
+    expect($meta['providers'])->toBeArray()->toHaveCount(1)
+        ->and($meta['total_offers'])->toBe(1)
+        ->and($meta['unique_flights'])->toBe(1);
+});
