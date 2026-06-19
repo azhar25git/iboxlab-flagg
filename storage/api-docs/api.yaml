@@ -405,6 +405,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Passenger"
+        total_price:
+          type: number
+          description: Total price for all passengers (price per passenger × passenger count)
+          example: 530.00
+        currency:
+          type: string
+          description: ISO 4217 currency code
+          example: USD
         status:
           type: string
           enum: [confirmed, cancelled]
@@ -419,6 +427,8 @@ components:
         - flight_id
         - flight
         - passengers
+        - total_price
+        - currency
         - status
         - created_at
 

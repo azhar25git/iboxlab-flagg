@@ -55,11 +55,17 @@ class BookingController extends Controller
      */
     private function formatBooking(Booking $booking): array
     {
+        $flight = $booking->flight_snapshot;
+        $pricePerPassenger = (float) ($flight['price'] ?? 0);
+        $passengerCount = count($booking->passengers);
+
         return [
             'reference' => $booking->reference,
             'flight_id' => $booking->flight_id,
-            'flight' => $booking->flight_snapshot,
+            'flight' => $flight,
             'passengers' => $booking->passengers,
+            'total_price' => round($pricePerPassenger * $passengerCount, 2),
+            'currency' => $flight['currency'] ?? 'USD',
             'status' => $booking->status,
             'created_at' => $booking->created_at?->toIso8601String(),
         ];

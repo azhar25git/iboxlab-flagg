@@ -40,11 +40,13 @@ test('creates booking with valid data', function () {
     $response->assertCreated()
         ->assertJsonStructure([
             'data' => [
-                'reference', 'flight_id', 'flight', 'passengers', 'status', 'created_at',
+                'reference', 'flight_id', 'flight', 'passengers',
+                'total_price', 'currency', 'status', 'created_at',
             ],
         ])
         ->assertJsonPath('data.status', 'confirmed')
-        ->assertJsonPath('data.flight.id', $this->offer->id);
+        ->assertJsonPath('data.flight.id', $this->offer->id)
+        ->assertJsonPath('data.currency', 'USD');
 });
 
 test('returns 404 when flight_id not found', function () {
@@ -114,6 +116,31 @@ test('returns 422 for missing flight_id', function () {
 
     $response->assertUnprocessable()
         ->assertJsonValidationErrors(['flight_id']);
+});
+
+test('booking response includes total_price', function () {
+    $this->offer = FlightOfferFactory::make(['price' => 150.00]);
+
+    $resultSet = new ProviderResultSet('ProviderA', [$this->offer], ProviderStatus::SUCCESS, durationMs: 5);
+    $mockProvider = mock(ProviderContract::class);
+    $mockProvider->shouldReceive('name')->andReturn('ProviderA');
+    $mockProvider->shouldReceive('search')->andReturn($resultSet);
+
+    $registry = new ProviderRegistry;
+    $registry->register($mockProvider);
+    $this->app->instance(ProviderRegistry::class, $registry);
+
+    $response = $this->postJson('/api/bookings', [
+        'flight_id' => $this->offer->id,
+        'passengers' => [
+            ['name' => 'A', 'email' => 'a@b.com', 'date_of_birth' => '1990-01-01'],
+            ['name' => 'B', 'email' => 'b@c.com', 'date_of_birth' => '1991-02-02'],
+            ['name' => 'C', 'email' => 'c@d.com', 'date_of_birth' => '1992-03-03'],
+        ],
+    ]);
+
+    $response->assertCreated();
+    expect((float) $response->json('data.total_price'))->toBe(450.0);
 });
 
 test('booking stores immutable flight snapshot', function () {
