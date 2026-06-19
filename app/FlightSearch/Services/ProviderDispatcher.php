@@ -22,7 +22,9 @@ class ProviderDispatcher
     public function dispatch(SearchRequest $request): array
     {
         $timeout = (int) config('providers.timeout', 5);
-        $baseUrl = rtrim((string) config('app.url'), '/');
+        $baseUrl = app()->runningInConsole()
+            ? rtrim((string) config('app.url', 'http://localhost'), '/')
+            : request()->schemeAndHttpHost();
 
         $providers = $this->registry->all();
         $names = array_keys($providers);

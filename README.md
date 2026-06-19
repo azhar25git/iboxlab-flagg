@@ -19,10 +19,10 @@ Requirements: PHP ^8.3, Composer, SQLite (or any database — SQLite is zero-con
 php artisan serve
 ```
 
-The provider dispatcher makes concurrent HTTP calls back to the same host to fetch provider fixtures. The built-in PHP development server is single-threaded by default, so start it with multiple workers and make sure `APP_URL` matches the server address:
+The provider dispatcher makes concurrent HTTP calls back to the same host to fetch provider fixtures. The built-in PHP development server is single-threaded by default, so use multiple workers:
 
 ```bash
-APP_URL=http://127.0.0.1:8000 PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8000 -t public
+PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8000 -t public
 ```
 
 ## Test
