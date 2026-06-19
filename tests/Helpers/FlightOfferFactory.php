@@ -2,22 +2,10 @@
 
 namespace Tests\Helpers;
 
-use App\FlightSearch\Services\FlightIdGenerator;
 use App\FlightSearch\ValueObjects\FlightOffer;
 
 class FlightOfferFactory
 {
-    private static ?FlightIdGenerator $idGenerator = null;
-
-    private static function idGen(): FlightIdGenerator
-    {
-        if (self::$idGenerator === null) {
-            self::$idGenerator = new FlightIdGenerator;
-        }
-
-        return self::$idGenerator;
-    }
-
     /**
      * @param  array<string, mixed>  $overrides
      */
@@ -37,7 +25,7 @@ class FlightOfferFactory
             'providerRawId' => 'EK585',
         ], $overrides);
 
-        $id = self::idGen()->generate(
+        $id = FlightOffer::makeId(
             carrier: $attrs['carrier'],
             flightNumber: $attrs['flightNumber'],
             origin: $attrs['origin'],

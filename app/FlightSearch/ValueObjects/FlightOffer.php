@@ -21,6 +21,22 @@ readonly class FlightOffer
         public string $providerRawId,
     ) {}
 
+    public static function makeId(
+        string $carrier,
+        string $flightNumber,
+        string $origin,
+        string $destination,
+        string $departureUtc,
+    ): string {
+        return hash('sha256', implode('|', [
+            strtoupper($carrier),
+            strtoupper($flightNumber),
+            strtoupper($origin),
+            strtoupper($destination),
+            $departureUtc,
+        ]));
+    }
+
     /**
      * @param  array<string, mixed>  $data
      */

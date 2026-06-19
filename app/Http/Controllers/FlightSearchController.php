@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\FlightSearch\Enums\SortDirection;
 use App\FlightSearch\Enums\SortField;
 use App\FlightSearch\Services\SearchService;
-use App\FlightSearch\ValueObjects\SearchRequest;
+use App\FlightSearch\ValueObjects\FlightOffer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -55,20 +55,50 @@ class FlightSearchController extends Controller
             $sortDirection = $parts[1] ?? null;
         }
 
-        $searchRequest = new SearchRequest(
-            from: strtoupper($validated['from']),
-            to: strtoupper($validated['to']),
-            date: $validated['date'],
-            passengers: (int) $validated['passengers'],
-            sortField: $sortField,
-            sortDirection: $sortDirection,
-            filterStops: isset($validated['filter']['stops']) ? (int) $validated['filter']['stops'] : null,
-            filterCarrier: $validated['filter']['carrier'] ?? null,
-            filterMaxPrice: isset($validated['filter']['max_price']) ? (float) $validated['filter']['max_price'] : null,
+        $params = [
+            'from' => strtoupper($validated['from']),
+            'to' => strtoupper($validated['to']),
+            'date' => $validated['date'],
+            'passengers' => (int) $validated['passengers'],
+            'sortField' => $sortField,
+            'sortDirection' => $sortDirection,
+            'filterStops' => isset($validated['filter']['stops']) ? (int) $validated['filter']['stops'] : null,
+            'filterCarrier' => $validated['filter']['carrier'] ?? null,
+            'filterMaxPrice' => isset($validated['filter']['max_price']) ? (float) $validated['filter']['max_price'] : null,
+        ];
+
+        $result = $this->searchService->search($params);
+
+        $providers = array_map(
+            fn (array $r) => [
+                'name' => $r['provider_name'],
+                'status' => $r['status']->value,
+                'offers' => count($r['offers']),
+                'duration_ms' => $r['duration_ms'],
+                ...($r['error_message'] !== null ? ['error_message' => $r['error_message']] : []),
+            ],
+            $result['providerResults'],
         );
 
-        $response = $this->searchService->search($searchRequest);
+        $totalOffers = array_sum(array_map(fn (array $p) => $p['offers'], $providers));
 
-        return response()->json($response->toArray());
+        $response = [
+            'data' => array_map(
+                fn (FlightOffer $f) => array_merge($f->toArray(), [
+                    'total_price' => round($f->price * $result['passengers'], 2),
+                ]),
+                $result['flights'],
+            ),
+            'meta' => [
+                'providers' => $providers,
+                'total_offers' => $totalOffers,
+                'unique_flights' => count($result['flights']),
+                'passengers' => $result['passengers'],
+                'currency' => 'USD',
+                'price_unit' => 'per_passenger',
+            ],
+        ];
+
+        return response()->json($response);
     }
 }

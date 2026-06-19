@@ -3,16 +3,11 @@
 namespace App\FlightSearch\Adapters;
 
 use App\FlightSearch\Contracts\ProviderContract;
-use App\FlightSearch\Services\FlightIdGenerator;
 use App\FlightSearch\ValueObjects\FlightOffer;
 use Carbon\Carbon;
 
 class ProviderC implements ProviderContract
 {
-    public function __construct(
-        private readonly FlightIdGenerator $idGenerator,
-    ) {}
-
     public function name(): string
     {
         return 'ProviderC';
@@ -36,7 +31,7 @@ class ProviderC implements ProviderContract
         $origin = (string) data_get($raw, 'route.src');
         $destination = (string) data_get($raw, 'route.dst');
 
-        $id = $this->idGenerator->generate(
+        $id = FlightOffer::makeId(
             carrier: $carrier,
             flightNumber: $flightNumber,
             origin: $origin,

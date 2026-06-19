@@ -5,26 +5,23 @@ namespace App\Providers;
 use App\FlightSearch\Adapters\ProviderA;
 use App\FlightSearch\Adapters\ProviderB;
 use App\FlightSearch\Adapters\ProviderC;
-use App\FlightSearch\Services\FlightOfferRepository;
-use App\FlightSearch\Services\ProviderDispatcher;
-use App\FlightSearch\Services\ProviderRegistry;
+use App\FlightSearch\Services\SearchService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton(FlightOfferRepository::class);
-        $this->app->singleton(ProviderDispatcher::class);
+        $this->app->singleton('providers', function ($app): array {
+            return [
+                'ProviderA' => $app->make(ProviderA::class),
+                'ProviderB' => $app->make(ProviderB::class),
+                'ProviderC' => $app->make(ProviderC::class),
+            ];
+        });
 
-        $this->app->singleton(ProviderRegistry::class, function ($app): ProviderRegistry {
-            $registry = new ProviderRegistry;
-
-            $registry->register($app->make(ProviderA::class));
-            $registry->register($app->make(ProviderB::class));
-            $registry->register($app->make(ProviderC::class));
-
-            return $registry;
+        $this->app->bind(SearchService::class, function ($app): SearchService {
+            return new SearchService($app->make('providers'));
         });
     }
 

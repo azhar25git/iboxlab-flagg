@@ -1,21 +1,18 @@
 <?php
 
-use App\FlightSearch\Services\ReferenceGenerator;
+use App\Models\Booking;
 
 test('generates reference with IBX prefix', function () {
-    $generator = new ReferenceGenerator;
+    $reference = Booking::generateReference();
 
-    $reference = $generator->generate();
-
-    expect($reference)->toMatch(ReferenceGenerator::pattern());
+    expect($reference)->toMatch(Booking::referencePattern());
 });
 
 test('generates unique references', function () {
-    $generator = new ReferenceGenerator;
     $references = [];
 
     for ($i = 0; $i < 50; $i++) {
-        $references[] = $generator->generate();
+        $references[] = Booking::generateReference();
     }
 
     expect(count(array_unique($references)))->toBe(50);

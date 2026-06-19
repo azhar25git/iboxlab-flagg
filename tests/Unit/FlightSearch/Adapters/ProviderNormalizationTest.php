@@ -3,15 +3,10 @@
 use App\FlightSearch\Adapters\ProviderA;
 use App\FlightSearch\Adapters\ProviderB;
 use App\FlightSearch\Adapters\ProviderC;
-use App\FlightSearch\Services\FlightIdGenerator;
-
-beforeEach(function () {
-    $this->idGenerator = new FlightIdGenerator;
-});
 
 describe('ProviderA', function () {
     test('normalizes all fields correctly', function () {
-        $adapter = new ProviderA($this->idGenerator);
+        $adapter = new ProviderA;
 
         $offer = $adapter->normalize([
             'carrier' => 'AA',
@@ -37,7 +32,7 @@ describe('ProviderA', function () {
     });
 
     test('generates a stable id', function () {
-        $adapter = new ProviderA($this->idGenerator);
+        $adapter = new ProviderA;
         $raw = [
             'carrier' => 'AA', 'from' => 'DAC', 'to' => 'DXB',
             'depart' => '2026-07-01T08:00:00', 'arrive' => '2026-07-01T12:30:00',
@@ -50,7 +45,7 @@ describe('ProviderA', function () {
 
 describe('ProviderB', function () {
     test('normalizes fields and treats time as UTC', function () {
-        $adapter = new ProviderB($this->idGenerator);
+        $adapter = new ProviderB;
 
         $offer = $adapter->normalize([
             'airline_code' => 'BS',
@@ -76,7 +71,7 @@ describe('ProviderB', function () {
 
 describe('ProviderC', function () {
     test('normalizes unix timestamps to ISO-8601 UTC', function () {
-        $adapter = new ProviderC($this->idGenerator);
+        $adapter = new ProviderC;
 
         $offer = $adapter->normalize([
             'iata' => 'EK',
@@ -99,9 +94,9 @@ describe('ProviderC', function () {
 });
 
 test('same flight from different providers produces identical id', function () {
-    $a = new ProviderA($this->idGenerator);
-    $b = new ProviderB($this->idGenerator);
-    $c = new ProviderC($this->idGenerator);
+    $a = new ProviderA;
+    $b = new ProviderB;
+    $c = new ProviderC;
 
     $offerA = $a->normalize([
         'carrier' => 'EK', 'from' => 'DAC', 'to' => 'DXB',

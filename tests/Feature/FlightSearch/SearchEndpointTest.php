@@ -1,22 +1,39 @@
 <?php
 
 use App\FlightSearch\Enums\ProviderStatus;
-use App\FlightSearch\Services\ProviderDispatcher;
-use App\FlightSearch\ValueObjects\ProviderResultSet;
+use App\FlightSearch\Services\SearchService;
 use Tests\Helpers\FlightOfferFactory;
 
 beforeEach(function () {
     $this->offer = FlightOfferFactory::make();
-
-    $dispatcher = mock(ProviderDispatcher::class);
-    $dispatcher->shouldReceive('dispatch')->andReturn([
-        new ProviderResultSet('ProviderA', [$this->offer], ProviderStatus::SUCCESS, durationMs: 10),
+    $this->offerArray = array_merge($this->offer->toArray(), [
+        'total_price' => round($this->offer->price * 2, 2),
     ]);
-
-    $this->app->instance(ProviderDispatcher::class, $dispatcher);
 });
 
+function makeServiceMock(array $offers, int $passengers = 2): mixed
+{
+    $service = mock(SearchService::class);
+    $service->shouldReceive('search')->andReturn([
+        'flights' => $offers,
+        'providerResults' => [
+            [
+                'provider_name' => 'ProviderA',
+                'offers' => $offers,
+                'status' => ProviderStatus::SUCCESS,
+                'duration_ms' => 10,
+                'error_message' => null,
+            ],
+        ],
+        'passengers' => $passengers,
+    ]);
+
+    return $service;
+}
+
 test('returns 200 with search results', function () {
+    $this->app->instance(SearchService::class, makeServiceMock([$this->offer]));
+
     $response = $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=2');
 
     $response->assertOk()
@@ -76,11 +93,7 @@ test('sorts by price ascending', function () {
         'price' => 500, 'flightNumber' => 'AA205', 'carrier' => 'AA',
     ]);
 
-    $dispatcher = mock(ProviderDispatcher::class);
-    $dispatcher->shouldReceive('dispatch')->andReturn([
-        new ProviderResultSet('ProviderA', [$expensive, $cheap], ProviderStatus::SUCCESS, durationMs: 10),
-    ]);
-    $this->app->instance(ProviderDispatcher::class, $dispatcher);
+    $this->app->instance(SearchService::class, makeServiceMock([$cheap, $expensive]));
 
     $response = $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=2&sort=price:asc');
 
@@ -96,11 +109,7 @@ test('sorts by price descending', function () {
         'price' => 500, 'flightNumber' => 'AA205', 'carrier' => 'AA',
     ]);
 
-    $dispatcher = mock(ProviderDispatcher::class);
-    $dispatcher->shouldReceive('dispatch')->andReturn([
-        new ProviderResultSet('ProviderA', [$expensive, $cheap], ProviderStatus::SUCCESS, durationMs: 10),
-    ]);
-    $this->app->instance(ProviderDispatcher::class, $dispatcher);
+    $this->app->instance(SearchService::class, makeServiceMock([$expensive, $cheap]));
 
     $response = $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=2&sort=price:desc');
 
@@ -121,6 +130,8 @@ test('returns 422 for invalid sort direction', function () {
 });
 
 test('duration_minutes is present and positive', function () {
+    $this->app->instance(SearchService::class, makeServiceMock([$this->offer]));
+
     $response = $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=2');
 
     $response->assertOk();
@@ -130,6 +141,8 @@ test('duration_minutes is present and positive', function () {
 });
 
 test('total_price is price multiplied by passengers', function () {
+    $this->app->instance(SearchService::class, makeServiceMock([$this->offer], 3));
+
     $response = $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=3');
 
     $response->assertOk();
@@ -139,6 +152,8 @@ test('total_price is price multiplied by passengers', function () {
 });
 
 test('meta contains completeness info', function () {
+    $this->app->instance(SearchService::class, makeServiceMock([$this->offer]));
+
     $response = $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=2');
 
     $response->assertOk();
