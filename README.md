@@ -88,3 +88,55 @@ Paste the URL above into [Swagger Editor](https://editor.swagger.io) or append `
 ## Architecture
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for design decisions, trade-offs, and extension points.
+
+## Future Roadmap
+
+Prioritized next steps if this moves beyond the exercise:
+
+### P0 — Provider health and observability
+
+**What:** Add per-request timing, structured logs, retries with backoff, and circuit-breaker logic for each provider. Replace the averaged duration metric with true per-provider latency.
+
+**Why:** Aggregation is only trustworthy when consumers can see exactly which providers responded, how long they took, and whether retries occurred. This is the highest-risk production gap today.
+
+### P1 — Persistent flight-offer storage for bookings
+
+**What:** Move the flight-offer cache from the array cache to Redis or a database table keyed by stable flight ID.
+
+**Why:** Booking currently only works if the offer is still in the same cache store and within the TTL. A booking reference must be resolvable long after the original search, possibly from a different app instance.
+
+### P1 — Real provider integrations
+
+**What:** Swap the internal fixture endpoints for configurable external base URLs, per-provider secrets read from environment variables, request signing, and provider-specific timeout/retry config. Keep `fixtures()` for tests.
+
+**Why:** The current implementation validates the architecture with mocks; production value depends on calling real provider APIs safely.
+
+### P2 — Input validation hardening
+
+**What:** Enforce IATA format on `filter[carrier]`, add a regex for `flight_id` in bookings, and tighten passenger validation (e.g. date-of-birth in the past, name length).
+
+**Why:** Fail fast at the boundary with clear 422 responses instead of letting bad data reach the services or providers.
+
+### P2 — Rate limiting and abuse prevention
+
+**What:** Add request throttling on `/api/flights/search` and `/api/bookings`, plus per-provider call quotas.
+
+**Why:** Both endpoints trigger external calls or side effects; unguarded, they become easy DoS vectors and can burn provider rate limits.
+
+### P2 — Async provider refresh and result caching
+
+**What:** Cache normalized provider results for a short TTL and refresh them in the background; keep a stale-while-revalidate fallback.
+
+**Why:** Reduces average search latency and provider load without returning completely stale data.
+
+### P3 — Multi-currency price normalization
+
+**What:** Integrate an exchange-rate service and normalize all prices to the requested currency.
+
+**Why:** The spec currently assumes USD, but a real aggregator must compare prices across currencies.
+
+### P3 — Pagination and response caching
+
+**What:** Add cursor pagination to the search response and cache final result sets.
+
+**Why:** Keeps response sizes bounded for busy routes and further reduces provider calls.
