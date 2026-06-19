@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\FlightSearch\Services\BookingService;
 use App\FlightSearch\Services\ReferenceGenerator;
-use App\Models\Booking;
+use App\Http\Resources\BookingResource;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -34,12 +34,10 @@ class BookingController extends Controller
             return response()->json(['message' => $e->getMessage()], 404);
         }
 
-        return response()->json([
-            'data' => $this->formatBooking($booking),
-        ], 201);
+        return (new BookingResource($booking))->response()->setStatusCode(201);
     }
 
-    public function cancel(string $reference): JsonResponse
+    public function cancel(string $reference): BookingResource|JsonResponse
     {
         validator(['reference' => $reference], [
             'reference' => 'regex:'.ReferenceGenerator::pattern(),
@@ -51,12 +49,10 @@ class BookingController extends Controller
             return response()->json(['message' => 'Booking not found.'], 404);
         }
 
-        return response()->json([
-            'data' => $this->formatBooking($booking),
-        ]);
+        return new BookingResource($booking);
     }
 
-    public function show(string $reference): JsonResponse
+    public function show(string $reference): BookingResource|JsonResponse
     {
         validator(['reference' => $reference], [
             'reference' => 'regex:'.ReferenceGenerator::pattern(),
@@ -68,33 +64,6 @@ class BookingController extends Controller
             return response()->json(['message' => 'Booking not found.'], 404);
         }
 
-        return response()->json([
-            'data' => $this->formatBooking($booking),
-        ]);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function formatBooking(Booking $booking): array
-    {
-        /** @var array<string, mixed> $flight */
-        $flight = $booking->flight_snapshot;
-        /** @var array<int, array<string, mixed>> $passengers */
-        $passengers = $booking->passengers;
-        $pricePerPassenger = (float) ($flight['price'] ?? 0);
-        $passengerCount = count($passengers);
-
-        return [
-            'reference' => $booking->reference,
-            'flight_id' => $booking->flight_id,
-            'flight' => $flight,
-            'passengers' => $passengers,
-            'total_price' => round($pricePerPassenger * $passengerCount, 2),
-            'currency' => $flight['currency'] ?? 'USD',
-            'status' => $booking->status,
-            'created_at' => $booking->created_at?->toIso8601String(),
-            'updated_at' => $booking->updated_at?->toIso8601String(),
-        ];
+        return new BookingResource($booking);
     }
 }
