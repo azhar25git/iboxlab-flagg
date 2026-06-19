@@ -220,44 +220,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/ValidationError"
 
-  /bookings/{reference}/cancel:
-    post:
-      tags: [Bookings]
-      summary: Cancel a booking
-      description: |
-        Cancels a confirmed booking. Returns the booking with
-        `status` set to `cancelled`. Idempotent — calling cancel on an
-        already-cancelled booking returns 200 with the current state.
-      operationId: cancelBooking
-      parameters:
-        - name: reference
-          in: path
-          required: true
-          description: Booking reference (e.g. IBX-01KVG7X96SPQ44NPZJBJ222KK8)
-          schema:
-            type: string
-            pattern: ^IBX-[0-9A-HJKMNP-TV-Z]{26}$
-            example: IBX-01KVG7X96SPQ44NPZJBJ222KK8
-      responses:
-        "200":
-          description: Booking cancelled
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/BookingResponse"
-        "404":
-          description: Booking not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "422":
-          description: Invalid reference format
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ValidationError"
-
 components:
   schemas:
     FlightOffer:
@@ -460,7 +422,7 @@ components:
           example: USD
         status:
           type: string
-          enum: [confirmed, cancelled]
+          enum: [confirmed]
           example: confirmed
         created_at:
           type: string

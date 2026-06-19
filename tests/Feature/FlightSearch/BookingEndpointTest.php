@@ -1,13 +1,13 @@
 <?php
 
-use App\FlightSearch\Services\FlightOfferRepository;
 use App\Models\Booking;
+use Illuminate\Support\Facades\Cache;
 use Tests\Helpers\FlightOfferFactory;
 
 beforeEach(function () {
     $this->offer = FlightOfferFactory::make();
 
-    app(FlightOfferRepository::class)->remember($this->offer);
+    Cache::put('flight_offer:'.$this->offer->id, $this->offer->toCacheArray(), 60);
 });
 
 test('creates booking with valid data', function () {
@@ -104,7 +104,7 @@ test('returns 422 for missing flight_id', function () {
 test('booking response includes total_price', function () {
     $this->offer = FlightOfferFactory::make(['price' => 150.00]);
 
-    app(FlightOfferRepository::class)->remember($this->offer);
+    Cache::put('flight_offer:'.$this->offer->id, $this->offer->toCacheArray(), 60);
 
     $response = $this->postJson('/api/bookings', [
         'flight_id' => $this->offer->id,
@@ -133,57 +133,11 @@ test('booking stores immutable flight snapshot', function () {
         ->and($booking->flight_snapshot['id'])->toBe($this->offer->id);
 });
 
-test('cancels a confirmed booking', function () {
-    $response = $this->postJson('/api/bookings', [
-        'flight_id' => $this->offer->id,
-        'passengers' => [
-            ['name' => 'John', 'email' => 'john@example.com', 'date_of_birth' => '1990-01-01'],
-        ],
-    ]);
-
-    $ref = $response->json('data.reference');
-
-    $cancel = $this->postJson("/api/bookings/{$ref}/cancel");
-
-    $cancel->assertOk()
-        ->assertJsonPath('data.status', 'cancelled');
-});
-
-test('returns 404 when cancelling non-existent booking', function () {
-    $cancel = $this->postJson('/api/bookings/IBX-01KVG7X96SPQ44NPZJBJ222KK8/cancel');
-
-    $cancel->assertNotFound();
-});
-
-test('returns 422 for invalid reference pattern on cancel', function () {
-    $response = $this->postJson('/api/bookings/NONSENSE/cancel');
-
-    $response->assertStatus(422)
-        ->assertJsonPath('message', 'reference invalid');
-});
-
 test('returns 422 for invalid reference pattern on show', function () {
     $response = $this->getJson('/api/bookings/NONSENSE');
 
     $response->assertStatus(422)
         ->assertJsonPath('message', 'reference invalid');
-});
-
-test('double-cancel is idempotent (returns 200)', function () {
-    $response = $this->postJson('/api/bookings', [
-        'flight_id' => $this->offer->id,
-        'passengers' => [
-            ['name' => 'John', 'email' => 'john@example.com', 'date_of_birth' => '1990-01-01'],
-        ],
-    ]);
-
-    $ref = $response->json('data.reference');
-
-    $this->postJson("/api/bookings/{$ref}/cancel");
-    $second = $this->postJson("/api/bookings/{$ref}/cancel");
-
-    $second->assertOk()
-        ->assertJsonPath('data.status', 'cancelled');
 });
 
 test('booking response includes updated_at', function () {
