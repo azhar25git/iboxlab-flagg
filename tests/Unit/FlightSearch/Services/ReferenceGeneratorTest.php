@@ -7,7 +7,7 @@ test('generates reference with IBX prefix', function () {
 
     $reference = $generator->generate();
 
-    expect($reference)->toMatch('/^IBX-[A-Z0-9]{4}$/');
+    expect($reference)->toMatch(ReferenceGenerator::pattern());
 });
 
 test('generates unique references', function () {

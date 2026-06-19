@@ -2,22 +2,23 @@
 
 namespace App\FlightSearch\Services;
 
+use Illuminate\Support\Str;
+
 class ReferenceGenerator
 {
     private const PREFIX = 'IBX-';
 
-    private const CHARS = 4;
+    private const ULID_LENGTH = 26;
 
     public function generate(): string
     {
-        $alpha = strtoupper(substr(bin2hex(random_bytes(3)), 0, self::CHARS));
-
-        return self::PREFIX.$alpha;
+        return self::PREFIX.Str::ulid();
     }
 
     public static function pattern(): string
     {
-        return '/^'.self::PREFIX.'[A-F0-9]{'.self::CHARS.'}$/';
+        // Crockford base32: 0-9 A-Z excluding I, L, O, U
+        return '/^'.self::PREFIX.'[0-9A-HJKMNP-TV-Z]{'.self::ULID_LENGTH.'}$/';
     }
 
     public static function isValid(string $reference): bool

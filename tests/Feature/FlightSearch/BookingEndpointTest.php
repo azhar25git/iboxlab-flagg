@@ -80,7 +80,7 @@ test('retrieves booking by reference', function () {
 });
 
 test('returns 404 for non-existent reference', function () {
-    $response = $this->getJson('/api/bookings/IBX-9999');
+    $response = $this->getJson('/api/bookings/IBX-01KVG7X96SPQ44NPZJBJ222KK8');
 
     $response->assertNotFound();
 });
@@ -174,7 +174,7 @@ test('cancels a confirmed booking', function () {
 });
 
 test('returns 404 when cancelling non-existent booking', function () {
-    $cancel = $this->postJson('/api/bookings/IBX-9999/cancel');
+    $cancel = $this->postJson('/api/bookings/IBX-01KVG7X96SPQ44NPZJBJ222KK8/cancel');
 
     $cancel->assertNotFound();
 });

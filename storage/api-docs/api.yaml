@@ -195,11 +195,11 @@ paths:
         - name: reference
           in: path
           required: true
-          description: Booking reference (e.g. IBX-D590)
+          description: Booking reference (e.g. IBX-01KVG7X96SPQ44NPZJBJ222KK8)
           schema:
             type: string
-            pattern: ^IBX-[A-F0-9]{4}$
-            example: IBX-D590
+            pattern: ^IBX-[0-9A-HJKMNP-TV-Z]{26}$
+            example: IBX-01KVG7X96SPQ44NPZJBJ222KK8
       responses:
         "200":
           description: Booking details including immutable flight snapshot
@@ -233,11 +233,11 @@ paths:
         - name: reference
           in: path
           required: true
-          description: Booking reference (e.g. IBX-D590)
+          description: Booking reference (e.g. IBX-01KVG7X96SPQ44NPZJBJ222KK8)
           schema:
             type: string
-            pattern: ^IBX-[A-F0-9]{4}$
-            example: IBX-D590
+            pattern: ^IBX-[0-9A-HJKMNP-TV-Z]{26}$
+            example: IBX-01KVG7X96SPQ44NPZJBJ222KK8
       responses:
         "200":
           description: Booking cancelled
@@ -439,7 +439,7 @@ components:
         reference:
           type: string
           description: Unique booking reference (IBX-XXXX)
-          example: IBX-D590
+          example: IBX-01KVG7X96SPQ44NPZJBJ222KK8
         flight_id:
           type: string
           description: Stable flight identifier at time of booking
