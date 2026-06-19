@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\FlightSearch\Services\BookingService;
+use App\FlightSearch\Services\ReferenceGenerator;
 use App\Models\Booking;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -41,7 +42,7 @@ class BookingController extends Controller
     public function cancel(string $reference): JsonResponse
     {
         validator(['reference' => $reference], [
-            'reference' => 'regex:/^IBX-[A-F0-9]{4}$/',
+            'reference' => 'regex:'.ReferenceGenerator::pattern(),
         ], ['reference.regex' => 'reference invalid'])->validate();
 
         try {
@@ -58,7 +59,7 @@ class BookingController extends Controller
     public function show(string $reference): JsonResponse
     {
         validator(['reference' => $reference], [
-            'reference' => 'regex:/^IBX-[A-F0-9]{4}$/',
+            'reference' => 'regex:'.ReferenceGenerator::pattern(),
         ], ['reference.regex' => 'reference invalid'])->validate();
 
         $booking = $this->bookingService->findByReference($reference);
