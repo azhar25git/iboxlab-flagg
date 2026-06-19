@@ -14,6 +14,9 @@ readonly class SearchResponse
         public int $passengers = 1,
     ) {}
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         $providers = array_map(

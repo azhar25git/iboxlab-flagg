@@ -6,7 +6,6 @@ use App\FlightSearch\Enums\BookingStatus;
 use App\FlightSearch\ValueObjects\FlightOffer;
 use App\FlightSearch\ValueObjects\SearchRequest;
 use App\Models\Booking;
-use App\Models\Booking as BookingModel;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class BookingService
@@ -36,12 +35,12 @@ class BookingService
             $passengers,
         );
 
-        return BookingModel::create([
+        return Booking::create([
             'reference' => $this->referenceGenerator->generate(),
             'flight_id' => $flightId,
             'flight_snapshot' => $flight->toArray(),
             'passengers' => $passengerData,
-            'status' => 'confirmed',
+            'status' => BookingStatus::CONFIRMED->value,
         ]);
     }
 
@@ -60,7 +59,7 @@ class BookingService
 
     public function findByReference(string $reference): ?Booking
     {
-        return BookingModel::where('reference', $reference)->first();
+        return Booking::where('reference', $reference)->first();
     }
 
     public function findOrFail(string $reference): Booking
@@ -68,7 +67,7 @@ class BookingService
         $booking = $this->findByReference($reference);
 
         if ($booking === null) {
-            throw (new ModelNotFoundException)->setModel(BookingModel::class, [$reference]);
+            throw (new ModelNotFoundException)->setModel(Booking::class, [$reference]);
         }
 
         return $booking;

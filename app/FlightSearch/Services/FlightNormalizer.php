@@ -11,6 +11,9 @@ class FlightNormalizer
         private readonly FlightIdGenerator $idGenerator,
     ) {}
 
+    /**
+     * @param  array<string, mixed>  $raw
+     */
     public function normalizeProviderA(array $raw): FlightOffer
     {
         $departure = Carbon::parse($raw['depart'], 'UTC')->toIso8601String();
@@ -40,6 +43,9 @@ class FlightNormalizer
         );
     }
 
+    /**
+     * @param  array<string, mixed>  $raw
+     */
     public function normalizeProviderB(array $raw): FlightOffer
     {
         $departure = Carbon::createFromFormat('Y-m-d H:i', $raw['departure_time'], 'UTC')
@@ -71,6 +77,9 @@ class FlightNormalizer
         );
     }
 
+    /**
+     * @param  array<string, mixed>  $raw
+     */
     public function normalizeProviderC(array $raw): FlightOffer
     {
         $departure = Carbon::createFromTimestamp($raw['times']['dep'], 'UTC')->toIso8601String();

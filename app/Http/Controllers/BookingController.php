@@ -78,15 +78,18 @@ class BookingController extends Controller
      */
     private function formatBooking(Booking $booking): array
     {
+        /** @var array<string, mixed> $flight */
         $flight = $booking->flight_snapshot;
+        /** @var array<int, array<string, mixed>> $passengers */
+        $passengers = $booking->passengers;
         $pricePerPassenger = (float) ($flight['price'] ?? 0);
-        $passengerCount = count($booking->passengers);
+        $passengerCount = count($passengers);
 
         return [
             'reference' => $booking->reference,
             'flight_id' => $booking->flight_id,
             'flight' => $flight,
-            'passengers' => $booking->passengers,
+            'passengers' => $passengers,
             'total_price' => round($pricePerPassenger * $passengerCount, 2),
             'currency' => $flight['currency'] ?? 'USD',
             'status' => $booking->status,

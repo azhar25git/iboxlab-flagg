@@ -29,6 +29,9 @@ readonly class FlightOffer
         return (int) $dep->diffInMinutes($arr);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return [

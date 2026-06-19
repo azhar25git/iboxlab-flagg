@@ -31,7 +31,7 @@ class FlightSearchController extends Controller
 
         if (! empty($validated['sort'])) {
             $parts = explode(':', $validated['sort'], 2);
-            $sortField = $parts[0] ?? null;
+            $sortField = $parts[0];
             $sortDirection = $parts[1] ?? null;
         }
 

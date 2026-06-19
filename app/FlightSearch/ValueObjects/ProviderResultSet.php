@@ -17,6 +17,9 @@ readonly class ProviderResultSet
         public int $durationMs = 0,
     ) {}
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toMetaArray(): array
     {
         return [
