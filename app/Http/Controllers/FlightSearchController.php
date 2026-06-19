@@ -18,8 +18,8 @@ class FlightSearchController extends Controller
     public function search(Request $httpRequest): JsonResponse
     {
         $validated = $httpRequest->validate([
-            'from' => ['required', 'string', 'size:3'],
-            'to' => ['required', 'string', 'size:3'],
+            'from' => ['required', 'string', 'size:3', 'regex:/^[A-Za-z]{3}$/'],
+            'to' => ['required', 'string', 'size:3', 'regex:/^[A-Za-z]{3}$/'],
             'date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'passengers' => ['required', 'integer', 'min:1'],
             'sort' => ['nullable', 'string', function ($attribute, $value, $fail): void {

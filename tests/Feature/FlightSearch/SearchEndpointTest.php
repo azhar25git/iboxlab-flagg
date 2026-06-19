@@ -50,6 +50,10 @@ test('returns 422 for invalid airport codes', function () {
     $this->getJson('/api/flights/search?from=DAC&to=LONDON&date=2026-07-01&passengers=2')
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['to']);
+
+    $this->getJson('/api/flights/search?from=123&to=DXB&date=2026-07-01&passengers=2')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['from']);
 });
 
 test('returns 422 for past date', function () {
