@@ -19,6 +19,12 @@ Requirements: PHP ^8.3, Composer, SQLite (or any database — SQLite is zero-con
 php artisan serve
 ```
 
+The provider dispatcher uses concurrent HTTP requests to internal fixture endpoints. The built-in PHP development server is single-threaded by default, so use multiple workers to avoid self-deadlock:
+
+```bash
+PHP_CLI_SERVER_WORKERS=4 php artisan serve
+```
+
 ## Test
 
 ```bash
