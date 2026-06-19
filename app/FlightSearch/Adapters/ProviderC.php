@@ -3,11 +3,8 @@
 namespace App\FlightSearch\Adapters;
 
 use App\FlightSearch\Contracts\ProviderContract;
-use App\FlightSearch\Enums\ProviderStatus;
 use App\FlightSearch\Services\FlightIdGenerator;
 use App\FlightSearch\ValueObjects\FlightOffer;
-use App\FlightSearch\ValueObjects\ProviderResultSet;
-use App\FlightSearch\ValueObjects\SearchRequest;
 use Carbon\Carbon;
 
 class ProviderC implements ProviderContract
@@ -24,25 +21,6 @@ class ProviderC implements ProviderContract
     public function endpoint(): string
     {
         return '/api/internal/providers/ProviderC/fixtures';
-    }
-
-    public function search(SearchRequest $request): ProviderResultSet
-    {
-        $start = hrtime(true);
-
-        $offers = array_map(
-            fn (array $raw): FlightOffer => $this->normalize($raw),
-            $this->fixtures(),
-        );
-
-        $durationMs = (int) ((hrtime(true) - $start) / 1_000_000);
-
-        return new ProviderResultSet(
-            providerName: $this->name(),
-            offers: $offers,
-            status: ProviderStatus::SUCCESS,
-            durationMs: $durationMs,
-        );
     }
 
     /**
