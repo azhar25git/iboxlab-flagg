@@ -8,6 +8,7 @@ enum SortField: string
     case DEPARTURE = 'departure';
     case ARRIVAL = 'arrival';
     case STOPS = 'stops';
+    case DURATION = 'duration';
 
     public static function fromString(string $value): self
     {
@@ -16,6 +17,7 @@ enum SortField: string
             'departure' => self::DEPARTURE,
             'arrival' => self::ARRIVAL,
             'stops' => self::STOPS,
+            'duration' => self::DURATION,
             default => throw new \InvalidArgumentException("Invalid sort field: {$value}"),
         };
     }

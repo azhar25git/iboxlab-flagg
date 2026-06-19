@@ -9,11 +9,12 @@ test('toArray returns correct shape', function () {
 
     expect($result)->toHaveKeys([
         'id', 'carrier', 'origin', 'destination',
-        'departure', 'arrival', 'stops', 'price',
+        'departure', 'arrival', 'duration_minutes', 'stops', 'price',
         'currency', 'flight_number', 'provider',
     ])
         ->and($result['flight_number'])->toBe('EK585')
-        ->and($result['currency'])->toBe('USD');
+        ->and($result['currency'])->toBe('USD')
+        ->and($result['duration_minutes'])->toBeInt()->toBeGreaterThan(0);
 });
 
 test('toArray uses snake_case for flight_number', function () {

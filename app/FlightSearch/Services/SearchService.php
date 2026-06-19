@@ -36,6 +36,7 @@ class SearchService
         return new SearchResponse(
             flights: $unique,
             providerResults: $providerResults,
+            passengers: $request->passengers,
         );
     }
 
@@ -117,6 +118,7 @@ class SearchService
                 SortField::DEPARTURE => $a->departure,
                 SortField::ARRIVAL => $a->arrival,
                 SortField::STOPS => $a->stops,
+                SortField::DURATION => $a->durationMinutes(),
             };
 
             $valueB = match ($field) {
@@ -124,6 +126,7 @@ class SearchService
                 SortField::DEPARTURE => $b->departure,
                 SortField::ARRIVAL => $b->arrival,
                 SortField::STOPS => $b->stops,
+                SortField::DURATION => $b->durationMinutes(),
             };
 
             $result = $valueA <=> $valueB;

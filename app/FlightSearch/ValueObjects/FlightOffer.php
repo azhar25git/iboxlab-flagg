@@ -2,6 +2,8 @@
 
 namespace App\FlightSearch\ValueObjects;
 
+use Carbon\Carbon;
+
 readonly class FlightOffer
 {
     public function __construct(
@@ -19,6 +21,14 @@ readonly class FlightOffer
         public string $providerRawId,
     ) {}
 
+    public function durationMinutes(): int
+    {
+        $dep = Carbon::parse($this->departure);
+        $arr = Carbon::parse($this->arrival);
+
+        return (int) $dep->diffInMinutes($arr);
+    }
+
     public function toArray(): array
     {
         return [
@@ -28,6 +38,7 @@ readonly class FlightOffer
             'destination' => $this->destination,
             'departure' => $this->departure,
             'arrival' => $this->arrival,
+            'duration_minutes' => $this->durationMinutes(),
             'stops' => $this->stops,
             'price' => $this->price,
             'currency' => $this->currency,

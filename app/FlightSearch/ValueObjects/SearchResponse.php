@@ -11,6 +11,7 @@ readonly class SearchResponse
     public function __construct(
         public array $flights,
         public array $providerResults,
+        public int $passengers = 1,
     ) {}
 
     public function toArray(): array
@@ -26,13 +27,18 @@ readonly class SearchResponse
 
         return [
             'data' => array_map(
-                fn (FlightOffer $f) => $f->toArray(),
+                fn (FlightOffer $f) => array_merge($f->toArray(), [
+                    'total_price' => round($f->price * $this->passengers, 2),
+                ]),
                 $this->flights,
             ),
             'meta' => [
                 'providers' => $providers,
                 'total_offers' => $totalOffers,
                 'unique_flights' => count($this->flights),
+                'passengers' => $this->passengers,
+                'currency' => 'USD',
+                'price_unit' => 'per_passenger',
             ],
         ];
     }

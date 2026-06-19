@@ -34,7 +34,7 @@ paths:
         unified result set with completeness metadata.
 
         **Sorting:** Use `sort=field:direction`. Valid fields: `price`,
-        `departure`, `arrival`, `stops`. Valid directions: `asc`, `desc`.
+        `departure`, `arrival`, `stops`, `duration`. Valid directions: `asc`, `desc`.
         Default sort is `price:asc`.
 
         **Filtering:** All filter params are optional. Multiple filters
@@ -245,6 +245,11 @@ components:
           format: date-time
           description: Arrival time in UTC ISO-8601
           example: "2026-07-01T06:50:00+00:00"
+        duration_minutes:
+          type: integer
+          minimum: 0
+          description: Total travel time in minutes
+          example: 185
         stops:
           type: integer
           minimum: 0
@@ -254,6 +259,10 @@ components:
           type: number
           description: Price per passenger in the given currency
           example: 399.00
+        total_price:
+          type: number
+          description: Total price for all passengers (price × passengers)
+          example: 1197.00
         currency:
           type: string
           description: ISO 4217 currency code
@@ -273,8 +282,10 @@ components:
         - destination
         - departure
         - arrival
+        - duration_minutes
         - stops
         - price
+        - total_price
         - currency
         - flight_number
         - provider
@@ -332,10 +343,27 @@ components:
               type: integer
               description: Unique flights after deduplication
               example: 6
+            passengers:
+              type: integer
+              minimum: 1
+              description: Number of passengers from the request
+              example: 2
+            currency:
+              type: string
+              description: Default currency for all prices
+              example: USD
+            price_unit:
+              type: string
+              description: Indicates the `price` field is per-passenger
+              enum: [per_passenger]
+              example: per_passenger
           required:
             - providers
             - total_offers
             - unique_flights
+            - passengers
+            - currency
+            - price_unit
       required:
         - data
         - meta
