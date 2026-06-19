@@ -213,6 +213,43 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /bookings/{reference}/cancel:
+    post:
+      tags: [Bookings]
+      summary: Cancel a booking
+      description: |
+        Cancels a confirmed booking. Returns the booking with
+        `status` set to `cancelled`. Idempotent in the sense that a second
+        cancel returns 409 with an error message.
+      operationId: cancelBooking
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          description: Booking reference (e.g. IBX-D590)
+          schema:
+            type: string
+            example: IBX-D590
+      responses:
+        "200":
+          description: Booking cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingResponse"
+        "404":
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Booking already cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     FlightOffer:
@@ -422,6 +459,11 @@ components:
           format: date-time
           description: Booking creation timestamp in UTC ISO-8601
           example: "2026-06-18T15:54:21+00:00"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last modification timestamp in UTC ISO-8601
+          example: "2026-06-19T14:52:00+00:00"
       required:
         - reference
         - flight_id
@@ -431,6 +473,7 @@ components:
         - currency
         - status
         - created_at
+        - updated_at
 
     BookingResponse:
       type: object

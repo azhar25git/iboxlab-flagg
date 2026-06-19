@@ -2,6 +2,7 @@
 
 namespace App\FlightSearch\Services;
 
+use App\FlightSearch\Enums\BookingStatus;
 use App\FlightSearch\ValueObjects\FlightOffer;
 use App\FlightSearch\ValueObjects\SearchRequest;
 use App\Models\Booking;
@@ -42,6 +43,19 @@ class BookingService
             'passengers' => $passengerData,
             'status' => 'confirmed',
         ]);
+    }
+
+    public function cancel(string $reference): Booking
+    {
+        $booking = $this->findOrFail($reference);
+
+        if ($booking->status === BookingStatus::CANCELLED->value) {
+            throw new \InvalidArgumentException('Booking is already cancelled.');
+        }
+
+        $booking->update(['status' => BookingStatus::CANCELLED->value]);
+
+        return $booking->fresh();
     }
 
     public function findByReference(string $reference): ?Booking

@@ -41,7 +41,7 @@ test('creates booking with valid data', function () {
         ->assertJsonStructure([
             'data' => [
                 'reference', 'flight_id', 'flight', 'passengers',
-                'total_price', 'currency', 'status', 'created_at',
+                'total_price', 'currency', 'status', 'created_at', 'updated_at',
             ],
         ])
         ->assertJsonPath('data.status', 'confirmed')
@@ -155,4 +155,59 @@ test('booking stores immutable flight snapshot', function () {
 
     expect($booking->flight_snapshot)->toBeArray()
         ->and($booking->flight_snapshot['id'])->toBe($this->offer->id);
+});
+
+test('cancels a confirmed booking', function () {
+    $response = $this->postJson('/api/bookings', [
+        'flight_id' => $this->offer->id,
+        'passengers' => [
+            ['name' => 'John', 'email' => 'john@example.com', 'date_of_birth' => '1990-01-01'],
+        ],
+    ]);
+
+    $ref = $response->json('data.reference');
+
+    $cancel = $this->postJson("/api/bookings/{$ref}/cancel");
+
+    $cancel->assertOk()
+        ->assertJsonPath('data.status', 'cancelled');
+});
+
+test('returns 404 when cancelling non-existent booking', function () {
+    $cancel = $this->postJson('/api/bookings/NONEXISTENT/cancel');
+
+    $cancel->assertNotFound();
+});
+
+test('returns 409 when cancelling already cancelled booking', function () {
+    $response = $this->postJson('/api/bookings', [
+        'flight_id' => $this->offer->id,
+        'passengers' => [
+            ['name' => 'John', 'email' => 'john@example.com', 'date_of_birth' => '1990-01-01'],
+        ],
+    ]);
+
+    $ref = $response->json('data.reference');
+
+    $this->postJson("/api/bookings/{$ref}/cancel");
+    $second = $this->postJson("/api/bookings/{$ref}/cancel");
+
+    $second->assertStatus(409);
+});
+
+test('booking response includes updated_at', function () {
+    $response = $this->postJson('/api/bookings', [
+        'flight_id' => $this->offer->id,
+        'passengers' => [
+            ['name' => 'John', 'email' => 'john@example.com', 'date_of_birth' => '1990-01-01'],
+        ],
+    ]);
+
+    $ref = $response->json('data.reference');
+
+    $get = $this->getJson("/api/bookings/{$ref}");
+
+    $get->assertOk()
+        ->assertJsonStructure(['data' => ['updated_at']])
+        ->assertJsonPath('data.updated_at', $response->json('data.updated_at'));
 });

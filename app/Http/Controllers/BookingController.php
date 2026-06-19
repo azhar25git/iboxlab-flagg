@@ -37,6 +37,23 @@ class BookingController extends Controller
         ], 201);
     }
 
+    public function cancel(string $reference): JsonResponse
+    {
+        try {
+            $booking = $this->bookingService->cancel($reference);
+        } catch (\InvalidArgumentException $e) {
+            if ($e->getMessage() === 'Booking is already cancelled.') {
+                return response()->json(['message' => $e->getMessage()], 409);
+            }
+
+            return response()->json(['message' => 'Booking not found.'], 404);
+        }
+
+        return response()->json([
+            'data' => $this->formatBooking($booking),
+        ]);
+    }
+
     public function show(string $reference): JsonResponse
     {
         $booking = $this->bookingService->findByReference($reference);
@@ -68,6 +85,7 @@ class BookingController extends Controller
             'currency' => $flight['currency'] ?? 'USD',
             'status' => $booking->status,
             'created_at' => $booking->created_at?->toIso8601String(),
+            'updated_at' => $booking->updated_at?->toIso8601String(),
         ];
     }
 }
