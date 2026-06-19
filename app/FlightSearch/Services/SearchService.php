@@ -2,24 +2,22 @@
 
 namespace App\FlightSearch\Services;
 
-use App\FlightSearch\Enums\ProviderStatus;
 use App\FlightSearch\Enums\SortDirection;
 use App\FlightSearch\Enums\SortField;
 use App\FlightSearch\ValueObjects\FlightOffer;
-use App\FlightSearch\ValueObjects\ProviderResultSet;
 use App\FlightSearch\ValueObjects\SearchRequest;
 use App\FlightSearch\ValueObjects\SearchResponse;
 
 class SearchService
 {
     public function __construct(
-        private readonly ProviderRegistry $registry,
+        private readonly ProviderDispatcher $dispatcher,
         private readonly FlightOfferRepository $flights,
     ) {}
 
     public function search(SearchRequest $request): SearchResponse
     {
-        $providerResults = $this->queryProviders($request);
+        $providerResults = $this->dispatcher->dispatch($request);
 
         $allOffers = [];
         foreach ($providerResults as $result) {
@@ -43,31 +41,6 @@ class SearchService
             providerResults: $providerResults,
             passengers: $request->passengers,
         );
-    }
-
-    /**
-     * @return ProviderResultSet[]
-     */
-    private function queryProviders(SearchRequest $request): array
-    {
-        $results = [];
-
-        foreach ($this->registry->all() as $provider) {
-            try {
-                $results[] = $provider->search($request);
-            } catch (\Throwable $e) {
-                report($e);
-
-                $results[] = new ProviderResultSet(
-                    providerName: $provider->name(),
-                    offers: [],
-                    status: ProviderStatus::ERROR,
-                    errorMessage: 'Provider query failed.',
-                );
-            }
-        }
-
-        return $results;
     }
 
     /**

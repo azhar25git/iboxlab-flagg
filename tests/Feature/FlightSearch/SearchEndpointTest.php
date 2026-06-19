@@ -1,29 +1,19 @@
 <?php
 
-use App\FlightSearch\Contracts\ProviderContract;
 use App\FlightSearch\Enums\ProviderStatus;
-use App\FlightSearch\Services\ProviderRegistry;
+use App\FlightSearch\Services\ProviderDispatcher;
 use App\FlightSearch\ValueObjects\ProviderResultSet;
 use Tests\Helpers\FlightOfferFactory;
 
 beforeEach(function () {
     $this->offer = FlightOfferFactory::make();
 
-    $resultSet = new ProviderResultSet(
-        providerName: 'ProviderA',
-        offers: [$this->offer],
-        status: ProviderStatus::SUCCESS,
-        durationMs: 10,
-    );
+    $dispatcher = mock(ProviderDispatcher::class);
+    $dispatcher->shouldReceive('dispatch')->andReturn([
+        new ProviderResultSet('ProviderA', [$this->offer], ProviderStatus::SUCCESS, durationMs: 10),
+    ]);
 
-    $mockProvider = mock(ProviderContract::class);
-    $mockProvider->shouldReceive('name')->andReturn('ProviderA');
-    $mockProvider->shouldReceive('search')->andReturn($resultSet);
-
-    $registry = new ProviderRegistry;
-    $registry->register($mockProvider);
-
-    $this->app->instance(ProviderRegistry::class, $registry);
+    $this->app->instance(ProviderDispatcher::class, $dispatcher);
 });
 
 test('returns 200 with search results', function () {
@@ -82,15 +72,11 @@ test('sorts by price ascending', function () {
         'price' => 500, 'flightNumber' => 'AA205', 'carrier' => 'AA',
     ]);
 
-    $resultSet = new ProviderResultSet('ProviderA', [$expensive, $cheap], ProviderStatus::SUCCESS, durationMs: 10);
-
-    $mockProvider = mock(ProviderContract::class);
-    $mockProvider->shouldReceive('name')->andReturn('ProviderA');
-    $mockProvider->shouldReceive('search')->andReturn($resultSet);
-
-    $registry = new ProviderRegistry;
-    $registry->register($mockProvider);
-    $this->app->instance(ProviderRegistry::class, $registry);
+    $dispatcher = mock(ProviderDispatcher::class);
+    $dispatcher->shouldReceive('dispatch')->andReturn([
+        new ProviderResultSet('ProviderA', [$expensive, $cheap], ProviderStatus::SUCCESS, durationMs: 10),
+    ]);
+    $this->app->instance(ProviderDispatcher::class, $dispatcher);
 
     $response = $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=2&sort=price:asc');
 
@@ -106,15 +92,11 @@ test('sorts by price descending', function () {
         'price' => 500, 'flightNumber' => 'AA205', 'carrier' => 'AA',
     ]);
 
-    $resultSet = new ProviderResultSet('ProviderA', [$expensive, $cheap], ProviderStatus::SUCCESS, durationMs: 10);
-
-    $mockProvider = mock(ProviderContract::class);
-    $mockProvider->shouldReceive('name')->andReturn('ProviderA');
-    $mockProvider->shouldReceive('search')->andReturn($resultSet);
-
-    $registry = new ProviderRegistry;
-    $registry->register($mockProvider);
-    $this->app->instance(ProviderRegistry::class, $registry);
+    $dispatcher = mock(ProviderDispatcher::class);
+    $dispatcher->shouldReceive('dispatch')->andReturn([
+        new ProviderResultSet('ProviderA', [$expensive, $cheap], ProviderStatus::SUCCESS, durationMs: 10),
+    ]);
+    $this->app->instance(ProviderDispatcher::class, $dispatcher);
 
     $response = $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=2&sort=price:desc');
 

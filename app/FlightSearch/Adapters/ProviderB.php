@@ -20,6 +20,11 @@ class ProviderB implements ProviderContract
         return 'ProviderB';
     }
 
+    public function endpoint(): string
+    {
+        return '/api/internal/providers/ProviderB/fixtures';
+    }
+
     public function search(SearchRequest $request): ProviderResultSet
     {
         $start = hrtime(true);
@@ -44,7 +49,7 @@ class ProviderB implements ProviderContract
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function fixtures(): array
+    public function fixtures(): array
     {
         return [
             [

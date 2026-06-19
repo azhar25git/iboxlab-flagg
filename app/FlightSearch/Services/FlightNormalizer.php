@@ -108,4 +108,17 @@ class FlightNormalizer
             providerRawId: $raw['code'],
         );
     }
+
+    /**
+     * @param  array<string, mixed>  $raw
+     */
+    public function normalize(array $raw, string $provider): FlightOffer
+    {
+        return match ($provider) {
+            'ProviderA' => $this->normalizeProviderA($raw),
+            'ProviderB' => $this->normalizeProviderB($raw),
+            'ProviderC' => $this->normalizeProviderC($raw),
+            default => throw new \InvalidArgumentException("Unknown provider: {$provider}"),
+        };
+    }
 }

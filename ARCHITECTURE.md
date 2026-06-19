@@ -48,19 +48,17 @@ Every adapter converts its provider's time format to UTC ISO-8601 before constru
 
 **Risk if a real provider sends local times.** That adapter would need an explicit timezone config. The contract allows it — each adapter owns its timezone logic. The normalizer doesn't guess.
 
-### 4. Provider dispatch is sequential
+### 4. Provider dispatch is concurrent with a bounded timeout
 
-All three providers are called in a `foreach` loop inside `SearchService::queryProviders()`.
+`SearchService` delegates fan-out to `ProviderDispatcher`, which sends async HTTP requests to each registered provider endpoint using Laravel's HTTP client and waits for all responses. The configured `providers.timeout` aborts any single provider that takes too long.
 
-**Why not concurrent.** Three mock providers returning static arrays complete in microseconds. Adding Fiber/Swoole/ReactPHP for this scenario is premature. The architecture is ready for concurrency — `queryProviders()` is a private method that can be swapped to use `curl_multi` or a job dispatch without changing the interface.
+**Why HTTP endpoints for mocks.** True concurrency in PHP is easiest with I/O-bound async HTTP calls. Each mock adapter exposes its fixtures via an internal `/api/internal/providers/{name}/fixtures` route, so the dispatcher exercises the same concurrency path a real integration would use.
 
-**Why not a timeout mechanism yet.** The `config/providers.php` has a `timeout` key. It's wired structurally but not enforced because the mocks never hang. Adding it is a 10-line change in `queryProviders()` using `set_time_limit()` per call or a promise library.
+**Why not Fiber/Swoole/ReactPHP.** Laravel's `Http::async()` gives sufficient concurrency for HTTP-bound providers without adding non-standard extensions or runtime dependencies. CPU-bound work is negligible once the response is received.
 
 ### 5. Error isolation: one provider failing does not crash the search
 
-If any provider throws, `SearchService` catches it, logs a `ProviderResultSet` with status `error`, and continues to the next provider. The consumer sees it in `meta.providers`.
-
-**What's leaked.** The exception message is included in `errorMessage`. For mock providers this is fine — it aids debugging. For production, the message would be replaced with a generic string. The field exists in the DTO, so the change is one line in the catch block.
+If any provider times out or returns a non-successful HTTP response, `ProviderDispatcher` catches it, logs it server-side, and returns a `ProviderResultSet` with status `timeout`/`error` and a generic `error_message`. The consumer sees the failure in `meta.providers` without stack traces or connection details.
 
 ### 6. Flight snapshots are stored at booking time, not looked up later
 
@@ -100,7 +98,7 @@ The entire flow is synchronous: HTTP request → controller → service → prov
 
 ## What I'd do with more time
 
-1. **Provider timeout enforcement.** Wrap each provider call in a timeout mechanism. Today a hung provider would hang the entire request (mock providers don't hang, but real ones do).
+1. **Circuit breaker / retry policy.** Add per-provider backoff and circuit breaking so a flaky provider doesn't waste timeouts on every request.
 
 2. **Cache search results by query params.** A 60-second cache keyed by normalized search params (`from|to|date`) avoids redundant provider calls for rapid repeated searches. The current cache is keyed by flight ID for booking resolution.
 

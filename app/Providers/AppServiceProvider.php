@@ -6,6 +6,7 @@ use App\FlightSearch\Adapters\ProviderA;
 use App\FlightSearch\Adapters\ProviderB;
 use App\FlightSearch\Adapters\ProviderC;
 use App\FlightSearch\Services\FlightOfferRepository;
+use App\FlightSearch\Services\ProviderDispatcher;
 use App\FlightSearch\Services\ProviderRegistry;
 use Illuminate\Support\ServiceProvider;
 
@@ -14,6 +15,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(FlightOfferRepository::class);
+        $this->app->singleton(ProviderDispatcher::class);
 
         $this->app->singleton(ProviderRegistry::class, function ($app): ProviderRegistry {
             $registry = new ProviderRegistry;

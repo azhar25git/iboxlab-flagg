@@ -1,9 +1,8 @@
 <?php
 
-use App\FlightSearch\Contracts\ProviderContract;
 use App\FlightSearch\Enums\ProviderStatus;
 use App\FlightSearch\Services\FlightOfferRepository;
-use App\FlightSearch\Services\ProviderRegistry;
+use App\FlightSearch\Services\ProviderDispatcher;
 use App\FlightSearch\Services\SearchService;
 use App\FlightSearch\ValueObjects\FlightOffer;
 use App\FlightSearch\ValueObjects\ProviderResultSet;
@@ -30,30 +29,28 @@ function makeSearchRequest(array $overrides = []): SearchRequest
     );
 }
 
-function makeRegistryWithOffers(array $providerOffers): ProviderRegistry
+function makeDispatcherWithOffers(array $providerOffers): ProviderDispatcher
 {
-    $registry = new ProviderRegistry;
+    $results = [];
 
     foreach ($providerOffers as $name => $offers) {
-        $provider = mock(ProviderContract::class);
-        $provider->shouldReceive('name')->andReturn($name);
-        $provider->shouldReceive('search')->andReturn(
-            new ProviderResultSet(
-                providerName: $name,
-                offers: $offers,
-                status: ProviderStatus::SUCCESS,
-                durationMs: 5,
-            )
+        $results[] = new ProviderResultSet(
+            providerName: $name,
+            offers: $offers,
+            status: ProviderStatus::SUCCESS,
+            durationMs: 5,
         );
-        $registry->register($provider);
     }
 
-    return $registry;
+    $dispatcher = mock(ProviderDispatcher::class);
+    $dispatcher->shouldReceive('dispatch')->andReturn($results);
+
+    return $dispatcher;
 }
 
-function makeSearchService(ProviderRegistry $registry): SearchService
+function makeSearchService(ProviderDispatcher $dispatcher): SearchService
 {
-    return new SearchService($registry, app(FlightOfferRepository::class));
+    return new SearchService($dispatcher, app(FlightOfferRepository::class));
 }
 
 describe('deduplication', function () {
@@ -62,13 +59,13 @@ describe('deduplication', function () {
         $offerB = makeOffer(['provider' => 'ProviderB', 'price' => 399.00]);
         $offerC = makeOffer(['provider' => 'ProviderC', 'price' => 405.00]);
 
-        $registry = makeRegistryWithOffers([
+        $dispatcher = makeDispatcherWithOffers([
             'ProviderA' => [$offerA],
             'ProviderB' => [$offerB],
             'ProviderC' => [$offerC],
         ]);
 
-        $service = makeSearchService($registry);
+        $service = makeSearchService($dispatcher);
         $response = $service->search(makeSearchRequest());
 
         expect($response->flights)->toHaveCount(1)
@@ -80,11 +77,11 @@ describe('deduplication', function () {
         $offer1 = makeOffer(['flightNumber' => 'AA101', 'carrier' => 'AA', 'price' => 300]);
         $offer2 = makeOffer(['flightNumber' => 'AA205', 'carrier' => 'AA', 'price' => 250]);
 
-        $registry = makeRegistryWithOffers([
+        $dispatcher = makeDispatcherWithOffers([
             'ProviderA' => [$offer1, $offer2],
         ]);
 
-        $service = makeSearchService($registry);
+        $service = makeSearchService($dispatcher);
         $response = $service->search(makeSearchRequest());
 
         expect($response->flights)->toHaveCount(2);
@@ -96,11 +93,11 @@ describe('sorting', function () {
         $offer1 = makeOffer(['price' => 400, 'flightNumber' => 'AA101', 'carrier' => 'AA']);
         $offer2 = makeOffer(['price' => 200, 'flightNumber' => 'AA205', 'carrier' => 'AA']);
 
-        $registry = makeRegistryWithOffers([
+        $dispatcher = makeDispatcherWithOffers([
             'ProviderA' => [$offer1, $offer2],
         ]);
 
-        $service = makeSearchService($registry);
+        $service = makeSearchService($dispatcher);
         $response = $service->search(makeSearchRequest());
 
         expect($response->flights[0]->price)->toBe(200.0)
@@ -111,11 +108,11 @@ describe('sorting', function () {
         $offer1 = makeOffer(['price' => 200, 'flightNumber' => 'AA101', 'carrier' => 'AA']);
         $offer2 = makeOffer(['price' => 400, 'flightNumber' => 'AA205', 'carrier' => 'AA']);
 
-        $registry = makeRegistryWithOffers([
+        $dispatcher = makeDispatcherWithOffers([
             'ProviderA' => [$offer1, $offer2],
         ]);
 
-        $service = makeSearchService($registry);
+        $service = makeSearchService($dispatcher);
         $response = $service->search(makeSearchRequest([
             'sortField' => 'price',
             'sortDirection' => 'desc',
@@ -130,11 +127,11 @@ describe('sorting', function () {
         $offer2 = makeOffer(['stops' => 0, 'price' => 200, 'flightNumber' => 'AA205', 'carrier' => 'AA']);
         $offer3 = makeOffer(['stops' => 1, 'price' => 150, 'flightNumber' => 'AA301', 'carrier' => 'AA']);
 
-        $registry = makeRegistryWithOffers([
+        $dispatcher = makeDispatcherWithOffers([
             'ProviderA' => [$offer1, $offer2, $offer3],
         ]);
 
-        $service = makeSearchService($registry);
+        $service = makeSearchService($dispatcher);
         $response = $service->search(makeSearchRequest([
             'sortField' => 'stops',
             'sortDirection' => 'asc',
@@ -151,11 +148,11 @@ describe('filtering', function () {
         $direct = makeOffer(['stops' => 0, 'flightNumber' => 'AA101', 'carrier' => 'AA', 'price' => 300]);
         $oneStop = makeOffer(['stops' => 1, 'flightNumber' => 'AA205', 'carrier' => 'AA', 'price' => 250]);
 
-        $registry = makeRegistryWithOffers([
+        $dispatcher = makeDispatcherWithOffers([
             'ProviderA' => [$direct, $oneStop],
         ]);
 
-        $service = makeSearchService($registry);
+        $service = makeSearchService($dispatcher);
         $response = $service->search(makeSearchRequest(['filterStops' => 0]));
 
         expect($response->flights)->toHaveCount(1)
@@ -166,11 +163,11 @@ describe('filtering', function () {
         $ek = makeOffer(['carrier' => 'EK', 'flightNumber' => 'EK585', 'price' => 400]);
         $aa = makeOffer(['carrier' => 'AA', 'flightNumber' => 'AA101', 'price' => 300]);
 
-        $registry = makeRegistryWithOffers([
+        $dispatcher = makeDispatcherWithOffers([
             'ProviderA' => [$ek, $aa],
         ]);
 
-        $service = makeSearchService($registry);
+        $service = makeSearchService($dispatcher);
         $response = $service->search(makeSearchRequest(['filterCarrier' => 'AA']));
 
         expect($response->flights)->toHaveCount(1)
@@ -181,11 +178,11 @@ describe('filtering', function () {
         $cheap = makeOffer(['price' => 200, 'flightNumber' => 'AA101', 'carrier' => 'AA']);
         $expensive = makeOffer(['price' => 500, 'flightNumber' => 'AA205', 'carrier' => 'AA']);
 
-        $registry = makeRegistryWithOffers([
+        $dispatcher = makeDispatcherWithOffers([
             'ProviderA' => [$cheap, $expensive],
         ]);
 
-        $service = makeSearchService($registry);
+        $service = makeSearchService($dispatcher);
         $response = $service->search(makeSearchRequest(['filterMaxPrice' => 300.0]));
 
         expect($response->flights)->toHaveCount(1)
@@ -197,22 +194,13 @@ describe('error isolation', function () {
     test('single provider failure does not crash search', function () {
         $offer = makeOffer();
 
-        $registry = new ProviderRegistry;
-
-        $good = mock(ProviderContract::class);
-        $good->shouldReceive('name')->andReturn('GoodProvider');
-        $good->shouldReceive('search')->andReturn(
+        $dispatcher = mock(ProviderDispatcher::class);
+        $dispatcher->shouldReceive('dispatch')->andReturn([
             new ProviderResultSet('GoodProvider', [$offer], ProviderStatus::SUCCESS, durationMs: 5),
-        );
+            new ProviderResultSet('BrokenProvider', [], ProviderStatus::ERROR, durationMs: 0, errorMessage: 'Provider request failed.'),
+        ]);
 
-        $broken = mock(ProviderContract::class);
-        $broken->shouldReceive('name')->andReturn('BrokenProvider');
-        $broken->shouldReceive('search')->andThrow(new RuntimeException('Connection refused'));
-
-        $registry->register($good);
-        $registry->register($broken);
-
-        $service = makeSearchService($registry);
+        $service = makeSearchService($dispatcher);
         $response = $service->search(makeSearchRequest());
 
         expect($response->flights)->toHaveCount(1);
@@ -225,7 +213,7 @@ describe('error isolation', function () {
 
         expect($goodMeta['status'])->toBe('success')
             ->and($brokenMeta['status'])->toBe('error')
-            ->and($brokenMeta['error_message'])->toBe('Provider query failed.')
+            ->and($brokenMeta['error_message'])->toBe('Provider request failed.')
             ->and($brokenMeta['error_message'])->not->toContain('Connection refused');
     });
 });
