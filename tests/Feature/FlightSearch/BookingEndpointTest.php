@@ -80,7 +80,7 @@ test('retrieves booking by reference', function () {
 });
 
 test('returns 404 for non-existent reference', function () {
-    $response = $this->getJson('/api/bookings/NOTFOUND');
+    $response = $this->getJson('/api/bookings/IBX-9999');
 
     $response->assertNotFound();
 });
@@ -174,9 +174,23 @@ test('cancels a confirmed booking', function () {
 });
 
 test('returns 404 when cancelling non-existent booking', function () {
-    $cancel = $this->postJson('/api/bookings/NONEXISTENT/cancel');
+    $cancel = $this->postJson('/api/bookings/IBX-9999/cancel');
 
     $cancel->assertNotFound();
+});
+
+test('returns 422 for invalid reference pattern on cancel', function () {
+    $response = $this->postJson('/api/bookings/NONSENSE/cancel');
+
+    $response->assertStatus(422)
+        ->assertJsonPath('message', 'reference invalid');
+});
+
+test('returns 422 for invalid reference pattern on show', function () {
+    $response = $this->getJson('/api/bookings/NONSENSE');
+
+    $response->assertStatus(422)
+        ->assertJsonPath('message', 'reference invalid');
 });
 
 test('double-cancel is idempotent (returns 200)', function () {

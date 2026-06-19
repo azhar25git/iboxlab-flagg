@@ -212,6 +212,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Invalid reference format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
 
   /bookings/{reference}/cancel:
     post:
@@ -243,6 +249,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Invalid reference format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
 
 components:
   schemas:
