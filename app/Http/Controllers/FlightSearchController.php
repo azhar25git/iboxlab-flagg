@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\FlightSearch\Enums\SortDirection;
 use App\FlightSearch\Enums\SortField;
 use App\FlightSearch\Services\SearchService;
-use App\FlightSearch\ValueObjects\FlightOffer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -69,26 +68,34 @@ class FlightSearchController extends Controller
 
         $result = $this->searchService->search($params);
 
-        $providers = array_map(
-            fn (array $r) => [
+        $providers = [];
+        foreach ($result['providerResults'] as $r) {
+            $meta = [
                 'name' => $r['provider_name'],
                 'status' => $r['status']->value,
                 'offers' => count($r['offers']),
                 'duration_ms' => $r['duration_ms'],
-                ...($r['error_message'] !== null ? ['error_message' => $r['error_message']] : []),
-            ],
-            $result['providerResults'],
-        );
+            ];
+            if ($r['error_message'] !== null) {
+                $meta['error_message'] = $r['error_message'];
+            }
+            $providers[] = $meta;
+        }
 
-        $totalOffers = array_sum(array_map(fn (array $p) => $p['offers'], $providers));
+        $totalOffers = 0;
+        foreach ($providers as $p) {
+            $totalOffers += $p['offers'];
+        }
+
+        $data = [];
+        foreach ($result['flights'] as $f) {
+            $data[] = array_merge($f->toArray(), [
+                'total_price' => round($f->price * $result['passengers'], 2),
+            ]);
+        }
 
         $response = [
-            'data' => array_map(
-                fn (FlightOffer $f) => array_merge($f->toArray(), [
-                    'total_price' => round($f->price * $result['passengers'], 2),
-                ]),
-                $result['flights'],
-            ),
+            'data' => $data,
             'meta' => [
                 'providers' => $providers,
                 'total_offers' => $totalOffers,

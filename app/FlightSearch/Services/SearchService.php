@@ -145,29 +145,33 @@ class SearchService
         } catch (ConnectionException $e) {
             report($e);
 
-            return array_map(
-                fn (string $name): array => [
+            $results = [];
+            foreach ($names as $name) {
+                $results[] = [
                     'provider_name' => $name,
                     'offers' => [],
                     'status' => ProviderStatus::TIMEOUT,
                     'duration_ms' => 0,
                     'error_message' => 'Provider request timed out.',
-                ],
-                $names,
-            );
+                ];
+            }
+
+            return $results;
         } catch (\Throwable $e) {
             report($e);
 
-            return array_map(
-                fn (string $name): array => [
+            $results = [];
+            foreach ($names as $name) {
+                $results[] = [
                     'provider_name' => $name,
                     'offers' => [],
                     'status' => ProviderStatus::ERROR,
                     'duration_ms' => 0,
                     'error_message' => 'Provider request failed.',
-                ],
-                $names,
-            );
+                ];
+            }
+
+            return $results;
         }
 
         $totalDurationMs = (int) ((hrtime(true) - $start) / 1_000_000);

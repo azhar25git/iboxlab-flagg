@@ -48,11 +48,20 @@ test('end-to-end search normalizes, deduplicates and returns provider meta', fun
     $data = $response->json('data');
     $meta = $response->json('meta');
 
-    $flightNumbers = array_map(fn ($f) => $f['flight_number'], $data);
+    $flightNumbers = [];
+    foreach ($data as $f) {
+        $flightNumbers[] = $f['flight_number'];
+    }
+    $ek585Count = 0;
+    foreach ($flightNumbers as $no) {
+        if ($no === 'EK585') {
+            $ek585Count++;
+        }
+    }
 
     expect($data)->toHaveCount(6)
         ->and($flightNumbers)->toContain('AA101', 'AA205', 'BS220', 'BS118', 'EK585', 'CJ300')
-        ->and(array_count_values($flightNumbers)['EK585'] ?? 0)->toBe(1)
+        ->and($ek585Count)->toBe(1)
         ->and($meta['total_offers'])->toBe(10)
         ->and($meta['unique_flights'])->toBe(6)
         ->and($meta['providers'])->toHaveCount(3);

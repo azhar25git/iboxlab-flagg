@@ -30,18 +30,20 @@ class BookingController extends Controller
 
         $flight = FlightOffer::fromArray($data);
 
+        $passengers = [];
+        foreach ($validated['passengers'] as $p) {
+            $passengers[] = [
+                'name' => $p['name'],
+                'email' => $p['email'],
+                'date_of_birth' => $p['date_of_birth'],
+            ];
+        }
+
         $booking = Booking::create([
             'reference' => Booking::generateReference(),
             'flight_id' => $validated['flight_id'],
             'flight_snapshot' => $flight->toArray(),
-            'passengers' => array_map(
-                fn (array $p) => [
-                    'name' => $p['name'],
-                    'email' => $p['email'],
-                    'date_of_birth' => $p['date_of_birth'],
-                ],
-                $validated['passengers'],
-            ),
+            'passengers' => $passengers,
             'status' => BookingStatus::CONFIRMED->value,
         ]);
 
