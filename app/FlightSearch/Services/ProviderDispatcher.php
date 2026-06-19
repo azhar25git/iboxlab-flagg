@@ -15,7 +15,6 @@ class ProviderDispatcher
 {
     public function __construct(
         private readonly ProviderRegistry $registry,
-        private readonly FlightNormalizer $normalizer,
     ) {}
 
     /**
@@ -97,7 +96,10 @@ class ProviderDispatcher
                 continue;
             }
 
-            $offers = $this->normalizeOffers($name, $response->json() ?? []);
+            $offers = array_map(
+                fn (array $raw): FlightOffer => $provider->normalize($raw),
+                array_values($response->json() ?? []),
+            );
 
             $results[] = new ProviderResultSet(
                 providerName: $name,
@@ -108,17 +110,5 @@ class ProviderDispatcher
         }
 
         return $results;
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $rawOffers
-     * @return FlightOffer[]
-     */
-    private function normalizeOffers(string $providerName, array $rawOffers): array
-    {
-        return array_map(
-            fn (array $raw): FlightOffer => $this->normalizer->normalize($raw, $providerName),
-            array_values($rawOffers),
-        );
     }
 }

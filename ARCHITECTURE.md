@@ -8,7 +8,7 @@ app/FlightSearch/
   Adapters/         ProviderA, ProviderB, ProviderC — mock adapters
   ValueObjects/     Readonly DTOs: FlightOffer, SearchRequest, SearchResponse, etc.
   Enums/            ProviderStatus, BookingStatus, SortField, SortDirection
-  Services/         FlightNormalizer, FlightIdGenerator, ProviderRegistry,
+  Services/         FlightIdGenerator, ProviderRegistry, ProviderDispatcher,
                     SearchService, BookingService, ReferenceGenerator
 app/Models/         Booking (the only Eloquent model)
 app/Http/           FlightSearchController, BookingController
@@ -42,11 +42,11 @@ Two providers returning the same flight (same `id`) collapse to the lowest-price
 
 ### 3. Provider times are normalized to UTC at the adapter boundary
 
-Every adapter converts its provider's time format to UTC ISO-8601 before constructing a `FlightOffer`. The normalizer is the only place that touches raw provider timestamps.
+Every adapter converts its provider's time format to UTC ISO-8601 before constructing a `FlightOffer`. There is no central normalizer; the adapter is the only place that knows its raw schema.
 
 **ProviderB times are UTC, not Asia/Dhaka.** The fixture `departure_time: "2026-07-01 03:45"` for EK585, when treated as UTC, produces the same canonical identity as ProviderA's `"2026-07-01T03:45:00"` and ProviderC's Unix timestamp `1782877500` (which is 2026-07-01T03:45:00Z). Treating it as Asia/Dhaka (UTC+6) breaks deduplication and contradicts the example response in the spec which shows `"departure": "2026-07-01T03:45:00Z"`.
 
-**Risk if a real provider sends local times.** That adapter would need an explicit timezone config. The contract allows it — each adapter owns its timezone logic. The normalizer doesn't guess.
+**Risk if a real provider sends local times.** That adapter would need an explicit timezone config. The contract allows it — each adapter owns its timezone logic.
 
 ### 4. Provider dispatch is concurrent with a bounded timeout
 
@@ -104,7 +104,7 @@ The entire flow is synchronous: HTTP request → controller → service → prov
 
 3. **Structured error messages.** Add machine-readable error codes (`PROVIDER_TIMEOUT`, `PROVIDER_UNREACHABLE`, `PROVIDER_INVALID_RESPONSE`) alongside the generic provider error message.
 
-4. **Test coverage.** Feature and unit tests cover normalizer output, deduplication, sorting, filtering, provider error isolation, and the booking lifecycle. Static analysis (Larastan level 6) is configured for the `app` directory.
+4. **Test coverage.** Feature and unit tests cover adapter normalization, deduplication, sorting, filtering, provider error isolation, and the booking lifecycle. Static analysis (Larastan level 6) is configured for the `app` directory.
 
 5. **Input validation for filter enums.** `filter[carrier]` and other filters could be tightened further (e.g. enforce IATA codes).
 

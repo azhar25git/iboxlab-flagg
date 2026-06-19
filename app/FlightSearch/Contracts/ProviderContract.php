@@ -2,6 +2,7 @@
 
 namespace App\FlightSearch\Contracts;
 
+use App\FlightSearch\ValueObjects\FlightOffer;
 use App\FlightSearch\ValueObjects\ProviderResultSet;
 use App\FlightSearch\ValueObjects\SearchRequest;
 
@@ -21,4 +22,9 @@ interface ProviderContract
      * @return array<int, array<string, mixed>>
      */
     public function fixtures(): array;
+
+    /**
+     * @param  array<string, mixed>  $raw
+     */
+    public function normalize(array $raw): FlightOffer;
 }

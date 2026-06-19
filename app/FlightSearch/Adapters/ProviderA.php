@@ -4,15 +4,16 @@ namespace App\FlightSearch\Adapters;
 
 use App\FlightSearch\Contracts\ProviderContract;
 use App\FlightSearch\Enums\ProviderStatus;
-use App\FlightSearch\Services\FlightNormalizer;
+use App\FlightSearch\Services\FlightIdGenerator;
 use App\FlightSearch\ValueObjects\FlightOffer;
 use App\FlightSearch\ValueObjects\ProviderResultSet;
 use App\FlightSearch\ValueObjects\SearchRequest;
+use Carbon\Carbon;
 
 class ProviderA implements ProviderContract
 {
     public function __construct(
-        private readonly FlightNormalizer $normalizer,
+        private readonly FlightIdGenerator $idGenerator,
     ) {}
 
     public function name(): string
@@ -29,11 +30,9 @@ class ProviderA implements ProviderContract
     {
         $start = hrtime(true);
 
-        $fixtures = $this->fixtures();
-
         $offers = array_map(
-            fn (array $raw): FlightOffer => $this->normalizer->normalizeProviderA($raw),
-            $fixtures,
+            fn (array $raw): FlightOffer => $this->normalize($raw),
+            $this->fixtures(),
         );
 
         $durationMs = (int) ((hrtime(true) - $start) / 1_000_000);
@@ -43,6 +42,43 @@ class ProviderA implements ProviderContract
             offers: $offers,
             status: ProviderStatus::SUCCESS,
             durationMs: $durationMs,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $raw
+     */
+    public function normalize(array $raw): FlightOffer
+    {
+        $departure = Carbon::parse((string) data_get($raw, 'depart'), 'UTC')->toIso8601String();
+        $arrival = Carbon::parse((string) data_get($raw, 'arrive'), 'UTC')->toIso8601String();
+
+        $carrier = (string) data_get($raw, 'carrier');
+        $flightNumber = (string) data_get($raw, 'flight_no');
+        $origin = (string) data_get($raw, 'from');
+        $destination = (string) data_get($raw, 'to');
+
+        $id = $this->idGenerator->generate(
+            carrier: $carrier,
+            flightNumber: $flightNumber,
+            origin: $origin,
+            destination: $destination,
+            departureUtc: $departure,
+        );
+
+        return new FlightOffer(
+            id: $id,
+            carrier: $carrier,
+            origin: $origin,
+            destination: $destination,
+            departure: $departure,
+            arrival: $arrival,
+            stops: (int) data_get($raw, 'stops'),
+            price: (float) data_get($raw, 'fare_usd'),
+            currency: 'USD',
+            flightNumber: $flightNumber,
+            provider: $this->name(),
+            providerRawId: $flightNumber,
         );
     }
 
