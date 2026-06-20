@@ -15,6 +15,8 @@ class ProviderFixtureController extends Controller
             return response()->json(['message' => 'Provider not found.'], 404);
         }
 
+        usleep(random_int(200_000, 300_000));
+
         return response()->json([$adapter->responseKey() => $adapter->fixtures()]);
     }
 }
