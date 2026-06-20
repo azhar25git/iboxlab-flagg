@@ -77,13 +77,17 @@ GET /api/bookings/{reference}
 
 OpenAPI 3.0 spec: [storage/api-docs/api.yaml](storage/api-docs/api.yaml)
 
-View in Swagger UI:
+Browse with Swagger UI:
+
+```
+http://localhost:8000/apidocs
+```
+
+Or paste the raw spec URL into [Swagger Editor](https://editor.swagger.io):
 
 ```
 http://localhost:8000/api/docs/openapi.yaml
 ```
-
-Paste the URL above into [Swagger Editor](https://editor.swagger.io) or append `?url=` to any Swagger UI instance.
 
 ## Architecture
 
