@@ -105,7 +105,7 @@ Prioritized next steps if this moves beyond the exercise:
 
 ### P1 — Persistent flight-offer storage for bookings
 
-**What:** Move the flight-offer cache from the array cache to Redis or a database table keyed by stable flight ID.
+**What:** Move the flight-offer cache from the array cache to Redis or a database table keyed by stable flight ID. Currently the TTL is 60 seconds (intentionally short to avoid stale pricing).
 
 **Why:** Booking currently only works if the offer is still in the same cache store and within the TTL. A booking reference must be resolvable long after the original search, possibly from a different app instance.
 

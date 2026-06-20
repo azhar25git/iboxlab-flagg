@@ -35,17 +35,23 @@ No frontend, authentication, payments, or admin panel is required. Build a clean
 
 | Domain | Concepts |
 |--------|----------|
-| Search | FlightOffer, SearchService, ProviderContract |
+| Search | FlightOffer, SearchParams, SearchService, ProviderContract |
 | Providers | ProviderA, ProviderB, ProviderC |
 | Booking | Booking, BookingResource |
+| Response Formatting | FlightOfferResource, ProviderMetaResource, SearchMetaResource |
 
 ## Domain Models
 
 | Model / Class | Responsibility & Notes |
 |---------------|------------------------|
 | `FlightOffer` | Readonly DTO: `id`, `carrier`, `origin`, `destination`, `departure`, `arrival`, `stops`, `price`, `currency`, `flightNumber`, `provider`, `providerRawId`. |
+| `SearchParams` | Readonly DTO: `from`, `to`, `date`, `passengers`, `sortField`, `sortDirection`, `filterMaxStops`, `filterCarriers`, `filterMaxPrice`. |
+| `ProviderResult` | Readonly DTO: `name`, `status`, `offers`, `durationMs`, `errorMessage`. |
 | `Booking` | Eloquent model: `reference`, `flight_id`, `flight_snapshot` (JSON), `passengers` (JSON), `status`. |
 | `BookingResource` | JsonResource: formats booking response, computes `total_price` from passengers × snapshot price. |
+| `FlightOfferResource` | JsonResource: formats flight offer, computes `total_price` from passengers × per-passenger price. |
+| `ProviderMetaResource` | JsonResource: formats per-provider meta entry with conditional `error_message`. |
+| `SearchMetaResource` | JsonResource: formats the `meta` block in search responses. |
 | `ProviderContract` | Interface: `name()`, `endpoint()`, `responseKey()`, `fixtures()`, `normalize(array $raw): FlightOffer`. |
 | `ProviderA` / `ProviderB` / `ProviderC` | Concrete adapters — fixtures + normalize. One class per provider schema. |
 | `SearchService` | Orchestrates provider dispatch, normalization, deduplication, filtering, sorting, and caching. |
@@ -131,7 +137,7 @@ Behavior:
 
 ## Services
 
-- **SearchService**: `search(array $params): array` — runs providers, normalizes, deduplicates, sorts/filters. Dispatches local adapters in-process, remote adapters via HTTP pool with per-provider timing.
+- **SearchService**: `search(SearchParams $params): array` — runs providers, normalizes, deduplicates, sorts/filters. Dispatches local adapters in-process, remote adapters via HTTP pool with per-provider timing.
 
 ## Mock Providers
 

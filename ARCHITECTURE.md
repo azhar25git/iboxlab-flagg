@@ -6,12 +6,12 @@
 app/FlightSearch/
   Contracts/        ProviderContract interface
   Adapters/         ProviderA, ProviderB, ProviderC
-  ValueObjects/     FlightOffer (readonly DTO)
+  ValueObjects/     FlightOffer (readonly DTO), SearchParams (readonly DTO), ProviderResult (readonly DTO)
   Enums/            ProviderStatus, BookingStatus, SortField, SortDirection
   Services/         SearchService (dispatch, dedup, filter, sort)
 app/Models/         Booking (the only Eloquent model)
 app/Http/           FlightSearchController, BookingController, ProviderFixtureController
-app/Http/Resources/ BookingResource
+app/Http/Resources/ BookingResource, FlightOfferResource, ProviderMetaResource, SearchMetaResource
 config/providers.php
 routes/api.php
 routes/web.php                  (apidocs Swagger UI route)
@@ -56,7 +56,7 @@ Every adapter converts its provider's time format to UTC ISO-8601 before constru
 
 `SearchService` fans out to all registered providers. Local adapters (endpoints starting with `/api/internal/`) are called in-process via `fixtures()`. Remote adapters use Laravel's HTTP pool for concurrent async requests. The configured `providers.timeout` aborts any pool request that takes too long.
 
-**Why HTTP endpoints for mocks.** True concurrency in PHP is easiest with I/O-bound async HTTP calls. Each mock adapter exposes its fixtures via an internal `/api/internal/providers/{name}/fixtures` route, so the search service exercises the same concurrency path a real integration would use. The fixture controller includes a 200–300ms random `usleep()` to simulate realistic network latency and test timeout/retry paths.
+**Why HTTP endpoints for mocks.** True concurrency in PHP is easiest with I/O-bound async HTTP calls. Each mock adapter exposes its fixtures via an internal `/api/internal/providers/{name}/fixtures` route, so the search service exercises the same concurrency path a real integration would use. `SearchService::resolveLocal()` includes a 200–300ms random `usleep()` before each in-process provider call to simulate realistic network latency and test timeout/retry paths.
 
 **Why not Fiber/Swoole/ReactPHP.** Laravel's `Http::async()` gives sufficient concurrency for HTTP-bound providers without adding non-standard extensions or runtime dependencies. CPU-bound work is negligible once the response is received.
 
@@ -80,11 +80,11 @@ The `bookings.passengers` column stores a JSON array of `{name, email, date_of_b
 
 **The one cost.** JSON columns have no referential integrity or unique constraints at the row level. A passenger can be "duplicated" across bookings. That's acceptable — bookings are independent contracts with the airline.
 
-### 8. BookingResource for serialization control, but no ResourceCollection
+### 8. API Resources for both booking and search responses
 
-The booking response uses a `BookingResource` (JsonResource) to compute `total_price` from `price × passengers` and format timestamps. The search response keeps a plain `response()->json()` array — no resource layer.
+The booking response uses `BookingResource` (JsonResource). The search response uses three resources: `FlightOfferResource` for each flight (computes `total_price` from `price × passengers`), `ProviderMetaResource` for each provider entry (conditionally includes `error_message`), and `SearchMetaResource` for the top-level `meta` block.
 
-**Why a resource for booking but not search.** The booking response needs computed fields (`total_price`, `currency`) derived from the cached flight + passengers. A resource isolates that logic from the controller. The search response is a direct projection of `FlightOffer::toArray()` with one computed merge (`total_price`), which is simpler inline.
+**Why resources for both.** Computed fields (`total_price`) and conditional fields (`error_message`) are formatting logic that clutters controllers. Extracting them into resources keeps the controller focused on orchestration — building the `SearchParams` object, calling the service, and returning the response.
 
 ### 9. Provider registration is config-driven
 
@@ -97,6 +97,12 @@ The booking response uses a `BookingResource` (JsonResource) to compute `total_p
 The entire flow is synchronous: HTTP request → controller → service → providers → response.
 
 **Why.** Queues solve two problems: long-running work and fan-out parallelism. The mock providers return in microseconds. Adding a `SearchProviders` job that fans out to 3 `QueryProvider` jobs and a `GatherResults` listener is a 10-file architecture for a problem that doesn't exist yet. When real providers with 2-second HTTP timeouts arrive, a queue-based approach becomes the right call.
+
+### 11. SearchParams is a typed value object, not a loose array
+
+The controller constructs a `SearchParams` readonly DTO from validated input. `SearchService::search()`, `resolveRemote()`, `filter()`, and `sort()` all accept `SearchParams` instead of `array`.
+
+**Why a DTO.** A typed object replaces `$params['filterMaxStops'] ?? null` with `$params->filterMaxStops` — the property either exists or it doesn't. Callers get IDE autocompletion and static analysis catches typos at compile time. No array key existence checks, no docblock shape annotations to maintain.
 
 ---
 
