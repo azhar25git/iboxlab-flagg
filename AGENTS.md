@@ -216,8 +216,7 @@ GET  /apidocs              (Swagger UI)
 
 - **Config**: `config/providers.php` — list of enabled providers, timeout, base URLs for future real integrations.
 - **Factories**: `FlightOfferFactory` (for test fixtures), `BookingFactory`.
-- **Seeders**: `ProviderFixtureSeeder` if demo data is loaded through the database.
-- **Tests**: Feature tests for search, booking, and provider adapters; unit tests for normalizer, deduplicator, and id generator.
+- **Tests**: Feature tests for search, booking, and provider adapters; unit tests for deduplication, filtering, and sorting.
 
 ## Testing
 
