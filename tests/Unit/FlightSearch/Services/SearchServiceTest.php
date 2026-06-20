@@ -202,10 +202,23 @@ describe('filtering', function () {
         $ek = makeOffer(['carrier' => 'EK', 'flightNumber' => 'EK585', 'price' => 400]);
         $aa = makeOffer(['carrier' => 'AA', 'flightNumber' => 'AA101', 'price' => 300]);
 
-        $result = filteredServiceWithOffers([$ek, $aa], makeParams(['filterCarrier' => 'AA']));
+        $result = filteredServiceWithOffers([$ek, $aa], makeParams(['filterCarrier' => ['AA']]));
 
         expect($result['flights'])->toHaveCount(1)
             ->and($result['flights'][0]->carrier)->toBe('AA');
+    });
+
+    test('filters by multiple carriers', function () {
+        $ek = makeOffer(['carrier' => 'EK', 'flightNumber' => 'EK585', 'price' => 400]);
+        $aa = makeOffer(['carrier' => 'AA', 'flightNumber' => 'AA101', 'price' => 300]);
+        $bs = makeOffer(['carrier' => 'BS', 'flightNumber' => 'BS220', 'price' => 310]);
+
+        $result = filteredServiceWithOffers(
+            [$ek, $aa, $bs],
+            makeParams(['filterCarrier' => ['AA', 'BS']]),
+        );
+
+        expect($result['flights'])->toHaveCount(2);
     });
 
     test('filters by max price', function () {

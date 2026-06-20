@@ -60,7 +60,7 @@ No frontend, authentication, payments, or admin panel is required. Build a clean
 
 ### `GET /api/flights/search`
 
-Query params: `from`, `to`, `date`, `passengers` (optional: `sort`, `filter[max_stops]`, `filter[carrier]`, `filter[max_price]`).
+Query params: `from`, `to`, `date`, `passengers` (optional: `sort`, `filter[max_stops]`, `filter[carrier]` (comma-separated), `filter[max_price]`).
 
 Validation rules:
 - `from`, `to`: required, 3-letter IATA airport codes, uppercased.

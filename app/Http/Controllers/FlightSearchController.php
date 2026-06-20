@@ -62,7 +62,9 @@ class FlightSearchController extends Controller
             'sortField' => $sortField,
             'sortDirection' => $sortDirection,
             'filterMaxStops' => isset($validated['filter']['max_stops']) ? (int) $validated['filter']['max_stops'] : null,
-            'filterCarrier' => $validated['filter']['carrier'] ?? null,
+            'filterCarrier' => ! empty($validated['filter']['carrier'])
+                ? array_map('strtoupper', array_map('trim', explode(',', $validated['filter']['carrier'])))
+                : null,
             'filterMaxPrice' => isset($validated['filter']['max_price']) ? (float) $validated['filter']['max_price'] : null,
         ];
 

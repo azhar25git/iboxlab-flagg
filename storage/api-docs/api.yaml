@@ -93,10 +93,10 @@ paths:
         - name: filter[carrier]
           in: query
           required: false
-          description: Filter by airline carrier code
+          description: Filter by airline carrier code(s), comma-separated for multiple
           schema:
             type: string
-            example: EK
+            example: AA,BS
         - name: filter[max_price]
           in: query
           required: false

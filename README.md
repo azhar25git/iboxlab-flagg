@@ -51,7 +51,7 @@ vendor/bin/phpstan analyse --memory-limit=1G
 GET /api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=2
 ```
 
-Optional query params: `sort` (format `field:direction`, e.g. `price:asc`), `filter[max_stops]`, `filter[carrier]`, `filter[max_price]`.
+Optional query params: `sort` (format `field:direction`, e.g. `price:asc`), `filter[max_stops]`, `filter[carrier]` (comma-separated, e.g. `AA,BS`), `filter[max_price]`.
 
 ### Create booking
 
