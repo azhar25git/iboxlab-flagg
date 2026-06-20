@@ -80,7 +80,7 @@ OpenAPI 3.0 spec: [storage/api-docs/api.yaml](storage/api-docs/api.yaml)
 View in Swagger UI:
 
 ```
-http://localhost:8000/api/docs/openapi.yaml
+http://localhost:8000/apidocs
 ```
 
 Paste the URL above into [Swagger Editor](https://editor.swagger.io) or append `?url=` to any Swagger UI instance.
