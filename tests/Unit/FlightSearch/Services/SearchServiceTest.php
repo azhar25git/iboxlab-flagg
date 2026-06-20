@@ -20,7 +20,7 @@ function makeParams(array $overrides = []): array
         'passengers' => 2,
         'sortField' => null,
         'sortDirection' => null,
-        'filterStops' => null,
+        'filterMaxStops' => null,
         'filterCarrier' => null,
         'filterMaxPrice' => null,
     ], $overrides);
@@ -192,7 +192,7 @@ describe('filtering', function () {
         $direct = makeOffer(['stops' => 0, 'flightNumber' => 'AA101', 'carrier' => 'AA', 'price' => 300]);
         $oneStop = makeOffer(['stops' => 1, 'flightNumber' => 'AA205', 'carrier' => 'AA', 'price' => 250]);
 
-        $result = filteredServiceWithOffers([$direct, $oneStop], makeParams(['filterStops' => 0]));
+        $result = filteredServiceWithOffers([$direct, $oneStop], makeParams(['filterMaxStops' => 0]));
 
         expect($result['flights'])->toHaveCount(1)
             ->and($result['flights'][0]->stops)->toBe(0);

@@ -82,7 +82,7 @@ paths:
           schema:
             type: string
             example: price:asc
-        - name: filter[stops]
+        - name: filter[max_stops]
           in: query
           required: false
           description: Maximum number of stops (non-stop = 0)

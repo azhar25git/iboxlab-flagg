@@ -40,7 +40,7 @@ class FlightSearchController extends Controller
                     }
                 }
             }],
-            'filter.stops' => ['nullable', 'integer', 'min:0'],
+            'filter.max_stops' => ['nullable', 'integer', 'min:0'],
             'filter.carrier' => ['nullable', 'string'],
             'filter.max_price' => ['nullable', 'numeric', 'min:0'],
         ]);
@@ -61,7 +61,7 @@ class FlightSearchController extends Controller
             'passengers' => (int) $validated['passengers'],
             'sortField' => $sortField,
             'sortDirection' => $sortDirection,
-            'filterStops' => isset($validated['filter']['stops']) ? (int) $validated['filter']['stops'] : null,
+            'filterMaxStops' => isset($validated['filter']['max_stops']) ? (int) $validated['filter']['max_stops'] : null,
             'filterCarrier' => $validated['filter']['carrier'] ?? null,
             'filterMaxPrice' => isset($validated['filter']['max_price']) ? (float) $validated['filter']['max_price'] : null,
         ];

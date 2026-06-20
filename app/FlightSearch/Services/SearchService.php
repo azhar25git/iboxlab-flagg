@@ -23,7 +23,7 @@ class SearchService
     ) {}
 
     /**
-     * @param  array{from: string, to: string, date: string, passengers: int, sortField?: ?string, sortDirection?: ?string, filterStops?: ?int, filterCarrier?: ?string, filterMaxPrice?: ?float}  $params
+     * @param  array{from: string, to: string, date: string, passengers: int, sortField?: ?string, sortDirection?: ?string, filterMaxStops?: ?int, filterCarrier?: ?string, filterMaxPrice?: ?float}  $params
      * @return array{flights: FlightOffer[], providerResults: array<int, array{provider_name: string, offers: FlightOffer[], status: ProviderStatus, error_message: ?string, duration_ms: int}>, passengers: int}
      */
     public function search(array $params): array
@@ -258,13 +258,13 @@ class SearchService
 
     /**
      * @param  FlightOffer[]  $offers
-     * @param  array{filterStops?: ?int, filterCarrier?: ?string, filterMaxPrice?: ?float}  $params
+     * @param  array{filterMaxStops?: ?int, filterCarrier?: ?string, filterMaxPrice?: ?float}  $params
      * @return FlightOffer[]
      */
     private function filter(array $offers, array $params): array
     {
         return array_values(array_filter($offers, function (FlightOffer $offer) use ($params): bool {
-            if (($params['filterStops'] ?? null) !== null && $offer->stops > $params['filterStops']) {
+            if (($params['filterMaxStops'] ?? null) !== null && $offer->stops > $params['filterMaxStops']) {
                 return false;
             }
 
