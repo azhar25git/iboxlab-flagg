@@ -137,6 +137,6 @@ Prioritized next steps if this moves beyond the exercise:
 
 ### P3 — Pagination and response caching
 
-**What:** Add cursor pagination to the search response and cache final result sets.
+**What:** Currently the search endpoint returns all unique flights in a single response with no limit, offset, or page controls. Add cursor pagination and cache final result sets.
 
-**Why:** Keeps response sizes bounded for busy routes and further reduces provider calls.
+**Why:** Keeps response sizes bounded (e.g. 10 per page) for busy routes and further reduces provider calls. A route with many providers can produce payloads that are too large or slow to serialize.
