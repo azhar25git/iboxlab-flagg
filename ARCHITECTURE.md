@@ -4,19 +4,23 @@
 
 ```
 app/FlightSearch/
-  Contracts/        One interface that every provider implements
-  Adapters/         ProviderA, ProviderB, ProviderC — mock adapters
-  ValueObjects/     Readonly DTOs: FlightOffer, SearchRequest, SearchResponse, etc.
+  Contracts/        ProviderContract interface
+  Adapters/         ProviderA, ProviderB, ProviderC
+  ValueObjects/     FlightOffer (readonly DTO)
   Enums/            ProviderStatus, BookingStatus, SortField, SortDirection
-  Services/         FlightIdGenerator, ProviderRegistry, ProviderDispatcher,
-                    SearchService, BookingService, ReferenceGenerator
+  Services/         SearchService (dispatch, dedup, filter, sort)
 app/Models/         Booking (the only Eloquent model)
-app/Http/           FlightSearchController, BookingController
+app/Http/           FlightSearchController, BookingController, ProviderFixtureController
+app/Http/Resources/ BookingResource
 config/providers.php
 routes/api.php
+routes/web.php                  (apidocs Swagger UI route)
+resources/views/api-docs.blade.php
 ```
 
 No `app/Services/` dumping ground. The domain lives under `app/FlightSearch/` so every file has one obvious home. A developer looking for "how ProviderB normalizes its payload" opens `Adapters/ProviderB.php` and finds it next to the contract it implements, not buried in a 40-file flat directory.
+
+The `resources/views/api-docs.blade.php` renders a Swagger UI page served at `/apidocs` (defined in `routes/web.php`). The raw OpenAPI YAML lives at `storage/api-docs/api.yaml` and is served at `/api/docs/openapi.yaml` (defined in `routes/api.php`).
 
 ---
 
@@ -50,19 +54,19 @@ Every adapter converts its provider's time format to UTC ISO-8601 before constru
 
 ### 4. Provider dispatch is concurrent with a bounded timeout
 
-`SearchService` delegates fan-out to `ProviderDispatcher`, which sends async HTTP requests to each registered provider endpoint using Laravel's HTTP client and waits for all responses. The configured `providers.timeout` aborts any single provider that takes too long.
+`SearchService` fans out to all registered providers. Local adapters (endpoints starting with `/api/internal/`) are called in-process via `fixtures()`. Remote adapters use Laravel's HTTP pool for concurrent async requests. The configured `providers.timeout` aborts any pool request that takes too long.
 
-**Why HTTP endpoints for mocks.** True concurrency in PHP is easiest with I/O-bound async HTTP calls. Each mock adapter exposes its fixtures via an internal `/api/internal/providers/{name}/fixtures` route, so the dispatcher exercises the same concurrency path a real integration would use.
+**Why HTTP endpoints for mocks.** True concurrency in PHP is easiest with I/O-bound async HTTP calls. Each mock adapter exposes its fixtures via an internal `/api/internal/providers/{name}/fixtures` route, so the search service exercises the same concurrency path a real integration would use.
 
 **Why not Fiber/Swoole/ReactPHP.** Laravel's `Http::async()` gives sufficient concurrency for HTTP-bound providers without adding non-standard extensions or runtime dependencies. CPU-bound work is negligible once the response is received.
 
 ### 5. Error isolation: one provider failing does not crash the search
 
-If any provider times out or returns a non-successful HTTP response, `ProviderDispatcher` catches it, logs it server-side, and returns a `ProviderResultSet` with status `timeout`/`error` and a generic `error_message`. The consumer sees the failure in `meta.providers` without stack traces or connection details.
+If any provider times out or returns a non-successful HTTP response, `SearchService` catches it, logs it server-side, and builds a per-provider result with status `timeout`/`error` and a generic `error_message`. The consumer sees the failure in `meta.providers` without stack traces or connection details. Per-provider latency is measured individually via Guzzle's `TransferStats::getTransferTime()`, not averaged across the pool.
 
 ### 6. Flight snapshots are stored at booking time, not looked up later
 
-When a booking is created, `BookingService` resolves the flight from a short-lived cache populated during search, then serializes the full `FlightOffer` into `flight_snapshot` (JSON column on `bookings`).
+When a booking is created, the controller resolves the flight from a short-lived cache populated during search, then serializes the full `FlightOffer` into `flight_snapshot` (JSON column on `bookings`).
 
 **Why cache.** A real search → booking flow might have seconds between search and purchase. Provider prices can change. By resolving from the cached search result and then storing a snapshot, the booking is immutable regardless of what the provider returns later. The snapshot is the source of truth for that booking. Caching also removes the need for a hardcoded route/date when resolving a flight by its stable ID.
 
@@ -76,17 +80,17 @@ The `bookings.passengers` column stores a JSON array of `{name, email, date_of_b
 
 **The one cost.** JSON columns have no referential integrity or unique constraints at the row level. A passenger can be "duplicated" across bookings. That's acceptable — bookings are independent contracts with the airline.
 
-### 8. No API resource classes
+### 8. BookingResource for serialization control, but no ResourceCollection
 
-Controllers return `response()->json($dto->toArray())`. No `JsonResource`, no `ResourceCollection`.
+The booking response uses a `BookingResource` (JsonResource) to compute `total_price` from `price × passengers` and format timestamps. The search response keeps a plain `response()->json()` array — no resource layer.
 
-**Why.** Resources add value when you have multiple serialization contexts (admin panel vs. public API, v1 vs. v2) or need eager-loading control. This API has one consumer and one shape. The `toArray()` on the DTO is the canonical serialization. If a second consumer needs a different shape later, introducing a Resource at that point is straightforward — the DTO remains the internal model.
+**Why a resource for booking but not search.** The booking response needs computed fields (`total_price`, `currency`) derived from the cached flight + passengers. A resource isolates that logic from the controller. The search response is a direct projection of `FlightOffer::toArray()` with one computed merge (`total_price`), which is simpler inline.
 
-### 9. ProviderRegistry is explicit, not discovered
+### 9. Provider registration is config-driven
 
-`AppServiceProvider::register()` manually instantiates and registers each provider adapter.
+`AppServiceProvider` reads the provider FQCN list from `config/providers.php`, resolves each through the container, and binds the resulting adapter instances as a `'providers'` singleton.
 
-**Why not auto-discover from config.** The `config/providers.php` file lists FQCNs and exists for future wiring. Auto-discovery from config (e.g., `app()->make($fqcn)` for each entry) adds a layer of indirection that provides no value when there are 3 providers hardcoded in a single place. When providers move to separate packages or dynamic registration, the config file becomes the single source of truth and the registry can read from it. Today, the explicit registration is obviously correct — you can see exactly what's registered in one file.
+**Why config-driven.** The `config/providers.php` file is the single source of truth for which providers are active. Adding a new provider means creating the adapter class and adding its FQCN to the config array — no service provider changes. The registration loop calls `$app->make()` on each FQCN, so adapters with constructor dependencies (e.g., an HTTP client for real integrations) are resolved automatically.
 
 ### 10. No queues, no jobs, no horizon
 
@@ -98,15 +102,11 @@ The entire flow is synchronous: HTTP request → controller → service → prov
 
 ## What I'd do with more time
 
-1. **Circuit breaker / retry policy.** Add per-provider backoff and circuit breaking so a flaky provider doesn't waste timeouts on every request.
+The README's Future Roadmap has the full prioritized backlog. A few architecture-specific additions:
 
-2. **Cache search results by query params.** A 60-second cache keyed by normalized search params (`from|to|date`) avoids redundant provider calls for rapid repeated searches. The current cache is keyed by flight ID for booking resolution.
+1. **Persist flight-offer cache.** Booking currently depends on a short-lived array cache. Move to Redis or a `flight_offers` table keyed by stable ID so bookings are resolvable long after the original search.
 
-3. **Structured error messages.** Add machine-readable error codes (`PROVIDER_TIMEOUT`, `PROVIDER_UNREACHABLE`, `PROVIDER_INVALID_RESPONSE`) alongside the generic provider error message.
-
-4. **Test coverage.** Feature and unit tests cover adapter normalization, deduplication, sorting, filtering, provider error isolation, and the booking lifecycle. Static analysis (Larastan level 6) is configured for the `app` directory.
-
-5. **Input validation for filter enums.** `filter[carriers]` and other filters could be tightened further (e.g. enforce IATA codes).
+2. **Structured error codes.** Add machine-readable codes (`PROVIDER_TIMEOUT`, `PROVIDER_UNREACHABLE`, `PROVIDER_INVALID_RESPONSE`) alongside generic messages in `meta.providers[].error_message`.
 
 ---
 
