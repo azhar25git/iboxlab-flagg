@@ -18,6 +18,11 @@ class ProviderC implements ProviderContract
         return '/api/internal/providers/ProviderC/fixtures';
     }
 
+    public function responseKey(): string
+    {
+        return 'results';
+    }
+
     /**
      * @param  array<string, mixed>  $raw
      */

@@ -15,6 +15,6 @@ class ProviderFixtureController extends Controller
             return response()->json(['message' => 'Provider not found.'], 404);
         }
 
-        return response()->json($adapter->fixtures());
+        return response()->json([$adapter->responseKey() => $adapter->fixtures()]);
     }
 }

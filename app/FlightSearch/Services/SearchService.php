@@ -208,7 +208,7 @@ class SearchService
             }
 
             /** @var array<int, array<string, mixed>> $rawOffers */
-            $rawOffers = array_values($response->json() ?? []);
+            $rawOffers = $response->json($provider->responseKey()) ?? [];
             $offers = [];
             $normalizationFailures = 0;
 

@@ -18,6 +18,11 @@ class ProviderA implements ProviderContract
         return '/api/internal/providers/ProviderA/fixtures';
     }
 
+    public function responseKey(): string
+    {
+        return 'flights';
+    }
+
     /**
      * @param  array<string, mixed>  $raw
      */

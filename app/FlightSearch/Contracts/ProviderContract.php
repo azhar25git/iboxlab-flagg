@@ -15,6 +15,12 @@ interface ProviderContract
     public function endpoint(): string;
 
     /**
+     * The response key that wraps the fixtures array in the provider's
+     * mock endpoint response (e.g. 'flights', 'data', 'results').
+     */
+    public function responseKey(): string;
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function fixtures(): array;

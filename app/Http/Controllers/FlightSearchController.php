@@ -101,7 +101,7 @@ class FlightSearchController extends Controller
                 'total_offers' => $totalOffers,
                 'unique_flights' => count($result['flights']),
                 'passengers' => $result['passengers'],
-                'currency' => 'USD',
+                'currency' => 'USD', // for simplicity, we assume all providers return prices in USD
                 'price_unit' => 'per_passenger',
             ],
         ];
