@@ -146,3 +146,15 @@ Prioritized next steps if this moves beyond the exercise:
 **What:** Add `POST /api/bookings/{reference}/cancel` to transition a booking from `confirmed` to `cancelled`.
 
 **Why:** Required for any real booking workflow. Was intentionally cut from the initial scope to keep the exercise focused on search and creation.
+
+### P3 — Clean up dead enum cases
+
+**What:** Remove or defer unused `BookingStatus` values (`PENDING`, `CANCELLED`) that exist in code but are never used.
+
+**Why:** Dead code is a maintenance liability. Kept during the exercise to avoid rework when cancellation is added back.
+
+### P3 — Explicit timezone handling for fixture timestamps
+
+**What:** Provider fixture times (ISO-8601 without offset, `Y-m-d H:i`) are treated as UTC by convention. Add explicit timezone parsing or document the assumption per provider.
+
+**Why:** All fixture data is for the same route (DAC→DXB), so UTC works. Real provider data may include local timezone offsets, requiring per-adapter shift rules.
