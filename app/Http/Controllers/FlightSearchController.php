@@ -82,11 +82,6 @@ class FlightSearchController extends Controller
             $providers[] = $meta;
         }
 
-        $totalOffers = 0;
-        foreach ($providers as $p) {
-            $totalOffers += $p['offers'];
-        }
-
         $data = [];
         foreach ($result['flights'] as $f) {
             $data[] = array_merge($f->toArray(), [
@@ -98,8 +93,8 @@ class FlightSearchController extends Controller
             'data' => $data,
             'meta' => [
                 'providers' => $providers,
-                'total_offers' => $totalOffers,
-                'unique_flights' => count($result['flights']),
+                'total_offers' => count($data),
+                'unique_flights' => count($data),
                 'passengers' => $result['passengers'],
                 'currency' => 'USD', // for simplicity, we assume all providers return prices in USD
                 'price_unit' => 'per_passenger',
