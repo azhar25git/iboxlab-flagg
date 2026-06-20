@@ -56,7 +56,7 @@ Every adapter converts its provider's time format to UTC ISO-8601 before constru
 
 `SearchService` fans out to all registered providers. Local adapters (endpoints starting with `/api/internal/`) are called in-process via `fixtures()`. Remote adapters use Laravel's HTTP pool for concurrent async requests. The configured `providers.timeout` aborts any pool request that takes too long.
 
-**Why HTTP endpoints for mocks.** True concurrency in PHP is easiest with I/O-bound async HTTP calls. Each mock adapter exposes its fixtures via an internal `/api/internal/providers/{name}/fixtures` route, so the search service exercises the same concurrency path a real integration would use.
+**Why HTTP endpoints for mocks.** True concurrency in PHP is easiest with I/O-bound async HTTP calls. Each mock adapter exposes its fixtures via an internal `/api/internal/providers/{name}/fixtures` route, so the search service exercises the same concurrency path a real integration would use. The fixture controller includes a 200–300ms random `usleep()` to simulate realistic network latency and test timeout/retry paths.
 
 **Why not Fiber/Swoole/ReactPHP.** Laravel's `Http::async()` gives sufficient concurrency for HTTP-bound providers without adding non-standard extensions or runtime dependencies. CPU-bound work is negligible once the response is received.
 
