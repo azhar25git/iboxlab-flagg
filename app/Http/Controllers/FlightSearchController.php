@@ -82,8 +82,10 @@ class FlightSearchController extends Controller
             $providerCounts[$f->provider] = ($providerCounts[$f->provider] ?? 0) + 1;
         }
 
+        $totalRaw = 0;
         $providers = [];
         foreach ($result['providerResults'] as $r) {
+            $totalRaw += count($r['offers']);
             $meta = [
                 'name' => $r['provider_name'],
                 'status' => $r['status']->value,
@@ -100,7 +102,7 @@ class FlightSearchController extends Controller
             'data' => $data,
             'meta' => [
                 'providers' => $providers,
-                'total_flights' => count($data),
+                'total_flights' => $totalRaw,
                 'unique_flights' => count($data),
                 'passengers' => $result['passengers'],
                 'currency' => 'USD', // for simplicity, we assume all providers return prices in USD

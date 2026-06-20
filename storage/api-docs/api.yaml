@@ -356,7 +356,7 @@ components:
               example: 10
             unique_flights:
               type: integer
-              description: Unique flights after deduplication
+              description: Unique flights in the response after deduplication and filtering
               example: 6
             passengers:
               type: integer
@@ -374,7 +374,7 @@ components:
               example: per_passenger
           required:
             - providers
-            - total_offers
+            - total_flights
             - unique_flights
             - passengers
             - currency

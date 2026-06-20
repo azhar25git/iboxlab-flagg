@@ -7,6 +7,7 @@ use App\FlightSearch\Enums\ProviderStatus;
 use App\FlightSearch\Enums\SortDirection;
 use App\FlightSearch\Enums\SortField;
 use App\FlightSearch\ValueObjects\FlightOffer;
+use GuzzleHttp\TransferStats;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
@@ -134,12 +135,17 @@ class SearchService
             'passengers' => $params['passengers'],
         ]);
 
-        $start = hrtime(true);
+        $providerTimings = [];
 
         try {
-            $responses = Http::timeout($timeout)->pool(function (Pool $pool) use ($remote, $baseUrl, $query): void {
+            $responses = Http::timeout($timeout)->pool(function (Pool $pool) use ($remote, $baseUrl, $query, &$providerTimings): void {
                 foreach ($remote as $provider) {
-                    $pool->as($provider->name())->get($baseUrl.$provider->endpoint().'?'.$query);
+                    $name = $provider->name();
+                    $pool->as($name)->withOptions([
+                        'on_stats' => function (TransferStats $stats) use ($name, &$providerTimings): void {
+                            $providerTimings[$name] = (int) ($stats->getTransferTime() * 1000);
+                        },
+                    ])->get($baseUrl.$provider->endpoint().'?'.$query);
                 }
             });
         } catch (ConnectionException $e) {
@@ -174,14 +180,12 @@ class SearchService
             return $results;
         }
 
-        $totalDurationMs = (int) ((hrtime(true) - $start) / 1_000_000);
-        $durationMs = (int) ($totalDurationMs / max(count($remote), 1));
-
         $results = [];
 
         foreach ($remote as $provider) {
             $name = $provider->name();
             $response = $responses[$name] ?? null;
+            $durationMs = $providerTimings[$name] ?? 0;
 
             if ($response instanceof ConnectionException) {
                 $results[] = [

@@ -15,7 +15,7 @@ class BookingController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'flight_id' => ['required', 'string'],
+            'flight_id' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/'],
             'passengers' => ['required', 'array', 'min:1'],
             'passengers.*.name' => ['required', 'string', 'max:255'],
             'passengers.*.email' => ['required', 'email', 'max:255'],

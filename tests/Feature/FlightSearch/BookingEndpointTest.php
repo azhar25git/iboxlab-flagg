@@ -34,7 +34,7 @@ test('creates booking with valid data', function () {
 
 test('returns 404 when flight_id not found', function () {
     $payload = [
-        'flight_id' => 'nonexistent-id',
+        'flight_id' => 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
         'passengers' => [
             ['name' => 'John Doe', 'email' => 'john@example.com', 'date_of_birth' => '1990-05-15'],
         ],
