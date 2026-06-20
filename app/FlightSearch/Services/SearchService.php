@@ -7,6 +7,7 @@ use App\FlightSearch\Enums\ProviderStatus;
 use App\FlightSearch\Enums\SortDirection;
 use App\FlightSearch\Enums\SortField;
 use App\FlightSearch\ValueObjects\FlightOffer;
+use App\FlightSearch\ValueObjects\SearchParams;
 use GuzzleHttp\TransferStats;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Pool;
@@ -24,10 +25,9 @@ class SearchService
     ) {}
 
     /**
-     * @param  array{from: string, to: string, date: string, passengers: int, sortField?: ?string, sortDirection?: ?string, filterMaxStops?: ?int, filterCarriers?: string[], filterMaxPrice?: ?float}  $params
      * @return array{flights: FlightOffer[], providerResults: array<int, array{provider_name: string, offers: FlightOffer[], status: ProviderStatus, error_message: ?string, duration_ms: int}>, passengers: int}
      */
-    public function search(array $params): array
+    public function search(SearchParams $params): array
     {
         $providerResults = array_merge(
             $this->resolveLocal(),
@@ -44,7 +44,7 @@ class SearchService
         $unique = $this->deduplicate($allOffers);
 
         foreach ($unique as $offer) {
-            Cache::put('flight_offer:'.$offer->id, $offer->toCacheArray(), 60);
+            Cache::put('flight_offer:'.$offer->id, $offer->toCacheArray(), now()->addSeconds(60));
         }
 
         $unique = $this->filter($unique, $params);
@@ -54,7 +54,7 @@ class SearchService
         return [
             'flights' => $unique,
             'providerResults' => $providerResults,
-            'passengers' => $params['passengers'],
+            'passengers' => $params->passengers,
         ];
     }
 
@@ -71,6 +71,8 @@ class SearchService
             }
 
             $start = hrtime(true);
+
+            usleep(random_int(200_000, 300_000));
             $offers = [];
             $normalizationFailures = 0;
 
@@ -107,10 +109,9 @@ class SearchService
     }
 
     /**
-     * @param  array{from: string, to: string, date: string, passengers: int}  $params
      * @return array<int, array{provider_name: string, offers: FlightOffer[], status: ProviderStatus, error_message: ?string, duration_ms: int}>
      */
-    protected function resolveRemote(array $params): array
+    protected function resolveRemote(SearchParams $params): array
     {
         $timeout = (int) config('providers.timeout', 5);
         $baseUrl = app()->runningInConsole()
@@ -129,10 +130,10 @@ class SearchService
         $names = array_keys($remote);
 
         $query = http_build_query([
-            'from' => $params['from'],
-            'to' => $params['to'],
-            'date' => $params['date'],
-            'passengers' => $params['passengers'],
+            'from' => $params->from,
+            'to' => $params->to,
+            'date' => $params->date,
+            'passengers' => $params->passengers,
         ]);
 
         $providerTimings = [];
@@ -262,21 +263,20 @@ class SearchService
 
     /**
      * @param  FlightOffer[]  $offers
-     * @param  array{filterMaxStops?: ?int, filterCarriers?: string[], filterMaxPrice?: ?float}  $params
      * @return FlightOffer[]
      */
-    private function filter(array $offers, array $params): array
+    private function filter(array $offers, SearchParams $params): array
     {
         return array_values(array_filter($offers, function (FlightOffer $offer) use ($params): bool {
-            if (($params['filterMaxStops'] ?? null) !== null && $offer->stops > $params['filterMaxStops']) {
+            if ($params->filterMaxStops !== null && $offer->stops > $params->filterMaxStops) {
                 return false;
             }
 
-            if (($params['filterCarriers'] ?? null) !== null && ! in_array(strtoupper($offer->carrier), $params['filterCarriers'], true)) {
+            if ($params->filterCarriers !== null && ! in_array(strtoupper($offer->carrier), $params->filterCarriers, true)) {
                 return false;
             }
 
-            if (($params['filterMaxPrice'] ?? null) !== null && $offer->price > $params['filterMaxPrice']) {
+            if ($params->filterMaxPrice !== null && $offer->price > $params->filterMaxPrice) {
                 return false;
             }
 
@@ -286,16 +286,15 @@ class SearchService
 
     /**
      * @param  FlightOffer[]  $offers
-     * @param  array{sortField?: ?string, sortDirection?: ?string}  $params
      * @return FlightOffer[]
      */
-    private function sort(array $offers, array $params): array
+    private function sort(array $offers, SearchParams $params): array
     {
-        $field = ($params['sortField'] ?? null) !== null
-            ? SortField::fromString($params['sortField'])
+        $field = $params->sortField !== null
+            ? SortField::fromString($params->sortField)
             : SortField::PRICE;
-        $direction = ($params['sortDirection'] ?? null) !== null
-            ? SortDirection::from($params['sortDirection'])
+        $direction = $params->sortDirection !== null
+            ? SortDirection::from($params->sortDirection)
             : SortDirection::ASC;
 
         usort($offers, function (FlightOffer $a, FlightOffer $b) use ($field, $direction): int {

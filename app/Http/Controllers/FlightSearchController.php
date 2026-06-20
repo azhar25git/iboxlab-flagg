@@ -5,6 +5,11 @@ namespace App\Http\Controllers;
 use App\FlightSearch\Enums\SortDirection;
 use App\FlightSearch\Enums\SortField;
 use App\FlightSearch\Services\SearchService;
+use App\FlightSearch\ValueObjects\ProviderResult;
+use App\FlightSearch\ValueObjects\SearchParams;
+use App\Http\Resources\FlightOfferResource;
+use App\Http\Resources\ProviderMetaResource;
+use App\Http\Resources\SearchMetaResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -54,27 +59,25 @@ class FlightSearchController extends Controller
             $sortDirection = $parts[1] ?? null;
         }
 
-        $params = [
-            'from' => strtoupper($validated['from']),
-            'to' => strtoupper($validated['to']),
-            'date' => $validated['date'],
-            'passengers' => (int) $validated['passengers'],
-            'sortField' => $sortField,
-            'sortDirection' => $sortDirection,
-            'filterMaxStops' => isset($validated['filter']['max_stops']) ? (int) $validated['filter']['max_stops'] : null,
-            'filterCarriers' => ! empty($validated['filter']['carriers'])
+        $params = new SearchParams(
+            from: strtoupper($validated['from']),
+            to: strtoupper($validated['to']),
+            date: $validated['date'],
+            passengers: (int) $validated['passengers'],
+            sortField: $sortField,
+            sortDirection: $sortDirection,
+            filterMaxStops: isset($validated['filter']['max_stops']) ? (int) $validated['filter']['max_stops'] : null,
+            filterCarriers: ! empty($validated['filter']['carriers'])
                 ? array_map('strtoupper', array_map('trim', explode(',', $validated['filter']['carriers'])))
                 : null,
-            'filterMaxPrice' => isset($validated['filter']['max_price']) ? (float) $validated['filter']['max_price'] : null,
-        ];
+            filterMaxPrice: isset($validated['filter']['max_price']) ? (float) $validated['filter']['max_price'] : null,
+        );
 
         $result = $this->searchService->search($params);
 
         $data = [];
         foreach ($result['flights'] as $f) {
-            $data[] = array_merge($f->toArray(), [
-                'total_price' => round($f->price * $result['passengers'], 2),
-            ]);
+            $data[] = new FlightOfferResource($f, $result['passengers']);
         }
 
         $providerCounts = [];
@@ -86,30 +89,25 @@ class FlightSearchController extends Controller
         $providers = [];
         foreach ($result['providerResults'] as $r) {
             $totalRaw += count($r['offers']);
-            $meta = [
-                'name' => $r['provider_name'],
-                'status' => $r['status']->value,
-                'offers' => $providerCounts[$r['provider_name']] ?? 0,
-                'duration_ms' => $r['duration_ms'],
-            ];
-            if ($r['error_message'] !== null) {
-                $meta['error_message'] = $r['error_message'];
-            }
-            $providers[] = $meta;
+            $providers[] = new ProviderMetaResource(new ProviderResult(
+                name: $r['provider_name'],
+                status: $r['status']->value,
+                offers: $providerCounts[$r['provider_name']] ?? 0,
+                durationMs: $r['duration_ms'],
+                errorMessage: $r['error_message'],
+            ));
         }
 
-        $response = [
+        return response()->json([
             'data' => $data,
-            'meta' => [
+            'meta' => new SearchMetaResource([
                 'providers' => $providers,
                 'total_flights' => $totalRaw,
-                'unique_flights' => count($data),
+                'unique_flights' => count($result['flights']),
                 'passengers' => $result['passengers'],
-                'currency' => 'USD', // for simplicity, we assume all providers return prices in USD
+                'currency' => 'USD',
                 'price_unit' => 'per_passenger',
-            ],
-        ];
-
-        return response()->json($response);
+            ]),
+        ]);
     }
 }

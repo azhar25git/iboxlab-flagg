@@ -4,6 +4,7 @@ use App\FlightSearch\Contracts\ProviderContract;
 use App\FlightSearch\Enums\ProviderStatus;
 use App\FlightSearch\Services\SearchService;
 use App\FlightSearch\ValueObjects\FlightOffer;
+use App\FlightSearch\ValueObjects\SearchParams;
 use Tests\Helpers\FlightOfferFactory;
 
 function makeOffer(array $overrides = []): FlightOffer
@@ -11,9 +12,9 @@ function makeOffer(array $overrides = []): FlightOffer
     return FlightOfferFactory::make($overrides);
 }
 
-function makeParams(array $overrides = []): array
+function makeParams(array $overrides = []): SearchParams
 {
-    return array_merge([
+    return new SearchParams(...array_merge([
         'from' => 'DAC',
         'to' => 'DXB',
         'date' => '2026-07-01',
@@ -23,7 +24,7 @@ function makeParams(array $overrides = []): array
         'filterMaxStops' => null,
         'filterCarriers' => null,
         'filterMaxPrice' => null,
-    ], $overrides);
+    ], $overrides));
 }
 
 function makeProvider(string $name, array $offers): ProviderContract
@@ -170,7 +171,7 @@ describe('sorting', function () {
 });
 
 describe('filtering', function () {
-    function filteredServiceWithOffers(array $offers, array $params): array
+    function filteredServiceWithOffers(array $offers, SearchParams $params): array
     {
         $service = mock(SearchService::class)->makePartial();
         $service->shouldAllowMockingProtectedMethods();
