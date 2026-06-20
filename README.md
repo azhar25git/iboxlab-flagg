@@ -140,3 +140,9 @@ Prioritized next steps if this moves beyond the exercise:
 **What:** Currently the search endpoint returns all unique flights in a single response with no limit, offset, or page controls. Add cursor pagination and cache final result sets.
 
 **Why:** Keeps response sizes bounded (e.g. 10 per page) for busy routes and further reduces provider calls. A route with many providers can produce payloads that are too large or slow to serialize.
+
+### P3 — Booking cancellation
+
+**What:** Add `POST /api/bookings/{reference}/cancel` to transition a booking from `confirmed` to `cancelled`.
+
+**Why:** Required for any real booking workflow. Was intentionally cut from the initial scope to keep the exercise focused on search and creation.
