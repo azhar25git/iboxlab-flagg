@@ -47,7 +47,7 @@ test('returns 200 with search results', function () {
                 ],
             ],
             'meta' => [
-                'providers', 'total_offers', 'unique_flights',
+                'providers', 'total_flights', 'unique_flights',
                 'passengers', 'currency', 'price_unit',
             ],
         ]);
@@ -160,7 +160,7 @@ test('meta contains completeness info', function () {
     $meta = $response->json('meta');
 
     expect($meta['providers'])->toBeArray()->toHaveCount(1)
-        ->and($meta['total_offers'])->toBe(1)
+        ->and($meta['total_flights'])->toBe(1)
         ->and($meta['unique_flights'])->toBe(1)
         ->and($meta['passengers'])->toBe(2)
         ->and($meta['currency'])->toBe('USD')

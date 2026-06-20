@@ -124,8 +124,8 @@ Behavior:
       { "name": "ProviderB", "status": "success", "offers": 3, "duration_ms": 18 },
       { "name": "ProviderC", "status": "success", "offers": 3, "duration_ms": 9 }
     ],
-    "total_offers": 10,
-    "unique_flights": 5
+    "total_flights": 6,
+    "unique_flights": 6
   }
 }
 ```

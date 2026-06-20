@@ -350,7 +350,7 @@ components:
               description: Per-provider status and counts
               items:
                 $ref: "#/components/schemas/ProviderMeta"
-            total_offers:
+            total_flights:
               type: integer
               description: Total raw offers across all providers (before dedup)
               example: 10

@@ -100,7 +100,7 @@ class FlightSearchController extends Controller
             'data' => $data,
             'meta' => [
                 'providers' => $providers,
-                'total_offers' => count($data),
+                'total_flights' => count($data),
                 'unique_flights' => count($data),
                 'passengers' => $result['passengers'],
                 'currency' => 'USD', // for simplicity, we assume all providers return prices in USD

@@ -62,7 +62,7 @@ test('end-to-end search normalizes, deduplicates and returns provider meta', fun
     expect($data)->toHaveCount(6)
         ->and($flightNumbers)->toContain('AA101', 'AA205', 'BS220', 'BS118', 'EK585', 'CJ300')
         ->and($ek585Count)->toBe(1)
-        ->and($meta['total_offers'])->toBe(6)
+        ->and($meta['total_flights'])->toBe(6)
         ->and($meta['unique_flights'])->toBe(6)
         ->and($meta['providers'])->toHaveCount(3);
 
