@@ -41,7 +41,7 @@ class FlightSearchController extends Controller
                 }
             }],
             'filter.max_stops' => ['nullable', 'integer', 'min:0'],
-            'filter.carrier' => ['nullable', 'string'],
+            'filter.carriers' => ['nullable', 'string'],
             'filter.max_price' => ['nullable', 'numeric', 'min:0'],
         ]);
 
@@ -62,8 +62,8 @@ class FlightSearchController extends Controller
             'sortField' => $sortField,
             'sortDirection' => $sortDirection,
             'filterMaxStops' => isset($validated['filter']['max_stops']) ? (int) $validated['filter']['max_stops'] : null,
-            'filterCarrier' => ! empty($validated['filter']['carrier'])
-                ? array_map('strtoupper', array_map('trim', explode(',', $validated['filter']['carrier'])))
+            'filterCarriers' => ! empty($validated['filter']['carriers'])
+                ? array_map('strtoupper', array_map('trim', explode(',', $validated['filter']['carriers'])))
                 : null,
             'filterMaxPrice' => isset($validated['filter']['max_price']) ? (float) $validated['filter']['max_price'] : null,
         ];

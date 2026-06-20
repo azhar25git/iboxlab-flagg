@@ -90,7 +90,7 @@ paths:
             type: integer
             minimum: 0
             example: 1
-        - name: filter[carrier]
+        - name: filter[carriers]
           in: query
           required: false
           description: Filter by airline carrier code(s), comma-separated for multiple

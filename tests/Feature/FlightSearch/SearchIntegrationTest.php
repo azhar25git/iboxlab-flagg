@@ -79,7 +79,7 @@ test('end-to-end search applies filters and sorting', function () {
         '*api/internal/providers/ProviderC/fixtures*' => Http::response(providerCFixtures()),
     ]);
 
-    $response = $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=1&filter[carrier]=BS&sort=price:asc');
+    $response = $this->getJson('/api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=1&filter[carriers]=BS&sort=price:asc');
 
     $response->assertOk();
 

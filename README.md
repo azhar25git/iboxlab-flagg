@@ -51,7 +51,7 @@ vendor/bin/phpstan analyse --memory-limit=1G
 GET /api/flights/search?from=DAC&to=DXB&date=2026-07-01&passengers=2
 ```
 
-Optional query params: `sort` (format `field:direction`, e.g. `price:asc`), `filter[max_stops]`, `filter[carrier]` (comma-separated, e.g. `AA,BS`), `filter[max_price]`.
+Optional query params: `sort` (format `field:direction`, e.g. `price:asc`), `filter[max_stops]`, `filter[carriers]` (comma-separated, e.g. `AA,BS`), `filter[max_price]`.
 
 ### Create booking
 
@@ -113,7 +113,7 @@ Prioritized next steps if this moves beyond the exercise:
 
 ### P2 — Input validation hardening
 
-**What:** Enforce IATA format on `filter[carrier]`, add a regex for `flight_id` in bookings, and tighten passenger validation (e.g. date-of-birth in the past, name length).
+**What:** Enforce IATA format on `filter[carriers]`, add a regex for `flight_id` in bookings, and tighten passenger validation (e.g. date-of-birth in the past, name length).
 
 **Why:** Fail fast at the boundary with clear 422 responses instead of letting bad data reach the services or providers.
 

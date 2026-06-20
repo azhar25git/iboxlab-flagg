@@ -21,7 +21,7 @@ function makeParams(array $overrides = []): array
         'sortField' => null,
         'sortDirection' => null,
         'filterMaxStops' => null,
-        'filterCarrier' => null,
+        'filterCarriers' => null,
         'filterMaxPrice' => null,
     ], $overrides);
 }
@@ -202,7 +202,7 @@ describe('filtering', function () {
         $ek = makeOffer(['carrier' => 'EK', 'flightNumber' => 'EK585', 'price' => 400]);
         $aa = makeOffer(['carrier' => 'AA', 'flightNumber' => 'AA101', 'price' => 300]);
 
-        $result = filteredServiceWithOffers([$ek, $aa], makeParams(['filterCarrier' => ['AA']]));
+        $result = filteredServiceWithOffers([$ek, $aa], makeParams(['filterCarriers' => ['AA']]));
 
         expect($result['flights'])->toHaveCount(1)
             ->and($result['flights'][0]->carrier)->toBe('AA');
@@ -215,7 +215,7 @@ describe('filtering', function () {
 
         $result = filteredServiceWithOffers(
             [$ek, $aa, $bs],
-            makeParams(['filterCarrier' => ['AA', 'BS']]),
+            makeParams(['filterCarriers' => ['AA', 'BS']]),
         );
 
         expect($result['flights'])->toHaveCount(2);
