@@ -24,7 +24,7 @@ No frontend, authentication, payments, or admin panel is required. Build a clean
 
 ## Key Patterns
 
-- **Provider Adapter Contract**: Every provider implements a common interface (`search(SearchRequest $request): ProviderResultSet`). Adapters own schema translation and timing; the aggregator never knows provider-specific keys.
+- **Provider Adapter Contract**: Every provider implements `ProviderContract` with `normalize(array $raw): FlightOffer`. Adapters own schema translation; the aggregator never knows provider-specific keys.
 - **Canonical Flight Model**: A single internal `FlightOffer` value object / DTO with normalized fields: carrier, origin, destination, departure, arrival, stops, price (normalized currency), flight number, provider, and a stable identity.
 - **Stable Identity**: Generate a deterministic flight identifier from normalized immutable attributes (e.g., carrier + flight number + origin + destination + departure UTC). This lets downstream booking refer to a consistent key even when the same physical flight appears from multiple providers.
 - **Deduplication**: Two offers represent the same flight when their stable identifiers match. Keep the best-priced offer or merge provider attributions — document the chosen strategy.
@@ -35,26 +35,20 @@ No frontend, authentication, payments, or admin panel is required. Build a clean
 
 | Domain | Concepts |
 |--------|----------|
-| Search | SearchRequest, FlightOffer, ProviderResultSet, SearchResponse |
-| Providers | ProviderContract, ProviderA, ProviderB, ProviderC, ProviderRegistry |
-| Booking | Booking, Passenger, BookingReference |
+| Search | FlightOffer, SearchService, ProviderContract |
+| Providers | ProviderA, ProviderB, ProviderC |
+| Booking | Booking, BookingResource |
 
 ## Domain Models
 
 | Model / Class | Responsibility & Notes |
 |---------------|------------------------|
-| `FlightOffer` | Canonical DTO: `id`, `carrier`, `origin`, `destination`, `departure`, `arrival`, `stops`, `price`, `currency`, `flightNumber`, `provider`, `providerRawId`. Immutable or readonly. |
-| `SearchRequest` | Query DTO: `from`, `to`, `date`, `passengers`. Validates and normalizes airport codes and dates. |
-| `SearchResponse` | Result DTO: `flights` array, `meta` (providers queried, successes, failures, total offers), `links`/pagination if added. |
-| `ProviderResultSet` | Per-provider outcome: `offers`, `status`, `errorMessage`, `durationMs`. |
+| `FlightOffer` | Readonly DTO: `id`, `carrier`, `origin`, `destination`, `departure`, `arrival`, `stops`, `price`, `currency`, `flightNumber`, `provider`, `providerRawId`. |
 | `Booking` | Eloquent model: `reference`, `flight_id`, `flight_snapshot` (JSON), `passengers` (JSON), `status`. |
-| `Passenger` | Value object: `name`, `email`, `date_of_birth`. Embedded in booking. |
-| `ProviderContract` | Interface: `search(SearchRequest $request): ProviderResultSet`. |
-| `ProviderA` / `ProviderB` / `ProviderC` | Concrete adapters mapping each provider's response shape to `FlightOffer`. |
-| `ProviderRegistry` | Holds registered provider adapters; injected into `SearchService`. |
-| `FlightNormalizer` | Centralizes provider response → `FlightOffer` mapping rules. |
-| `SearchService` | Orchestrates concurrent provider calls, normalization, deduplication, sorting/filtering. |
-| `BookingService` | Resolves a flight by stable id, persists a booking with a unique reference. |
+| `BookingResource` | JsonResource: formats booking response, computes `total_price` from passengers × snapshot price. |
+| `ProviderContract` | Interface: `name()`, `endpoint()`, `responseKey()`, `fixtures()`, `normalize(array $raw): FlightOffer`. |
+| `ProviderA` / `ProviderB` / `ProviderC` | Concrete adapters — fixtures + normalize. One class per provider schema. |
+| `SearchService` | Orchestrates provider dispatch, normalization, deduplication, filtering, sorting, and caching. |
 
 ## API Endpoints
 
@@ -111,8 +105,10 @@ Behavior:
       "destination": "DXB",
       "departure": "2026-07-01T03:45:00Z",
       "arrival": "2026-07-01T06:50:00Z",
+      "duration_minutes": 185,
       "stops": 0,
       "price": 399.00,
+      "total_price": 798.00,
       "currency": "USD",
       "flight_number": "EK585",
       "provider": "ProviderB"
@@ -120,24 +116,22 @@ Behavior:
   ],
   "meta": {
     "providers": [
-      { "name": "ProviderA", "status": "success", "offers": 4, "duration_ms": 12 },
+      { "name": "ProviderA", "status": "success", "offers": 2, "duration_ms": 12 },
       { "name": "ProviderB", "status": "success", "offers": 3, "duration_ms": 18 },
-      { "name": "ProviderC", "status": "success", "offers": 3, "duration_ms": 9 }
+      { "name": "ProviderC", "status": "success", "offers": 1, "duration_ms": 9 }
     ],
     "total_flights": 10,
-    "unique_flights": 6
+    "unique_flights": 6,
+    "passengers": 2,
+    "currency": "USD",
+    "price_unit": "per_passenger"
   }
 }
 ```
 
 ## Services
 
-- **ProviderRegistry**: `register(string $name, ProviderContract $provider)`, `all(): array`, `names(): array`.
-- **SearchService**: `search(SearchRequest $request): SearchResponse` — runs providers, normalizes, deduplicates, sorts/filters.
-- **FlightNormalizer**: `normalize(array $raw, string $provider): FlightOffer` — one method per provider.
-- **FlightIdGenerator**: `generate(FlightOffer $offer): string` — deterministic hash from carrier + flight number + route + departure UTC.
-- **BookingService**: `create(string $flightId, array $passengers): Booking`, `findByReference(string $reference): ?Booking`.
-- **ReferenceGenerator**: Generates short, unique, human-friendly booking references.
+- **SearchService**: `search(array $params): array` — runs providers, normalizes, deduplicates, sorts/filters. Dispatches local adapters in-process, remote adapters via HTTP pool with per-provider timing.
 
 ## Mock Providers
 
@@ -198,23 +192,25 @@ Implement each as a service class that can be swapped between a real HTTP client
 |------|--------|
 | `ProviderStatus` | `SUCCESS`, `TIMEOUT`, `ERROR`, `PARTIAL` |
 | `BookingStatus` | `CONFIRMED`, `CANCELLED` |
-| `SortField` | `PRICE`, `DEPARTURE`, `ARRIVAL`, `STOPS` |
+| `SortField` | `PRICE`, `DEPARTURE`, `ARRIVAL`, `STOPS`, `DURATION` |
 | `SortDirection` | `ASC`, `DESC` |
 
 ## Routes
 
-All routes live in `routes/api.php`.
+API routes live in `routes/api.php`. The Swagger UI page is in `routes/web.php`.
 
 ```
 GET  /api/flights/search
 POST /api/bookings
 GET  /api/bookings/{reference}
+GET  /api/docs/openapi.yaml
+GET  /apidocs              (Swagger UI)
 ```
 
 ## Controllers
 
 - **FlightSearchController**: `search(Request $request)` — validates input, delegates to `SearchService`, returns JSON.
-- **BookingController**: `store(Request $request)`, `show(string $reference)` — validates input, delegates to `BookingService`, returns JSON.
+- **BookingController**: `store(Request $request)`, `show(string $reference)` — validates input, resolves flight from cache, creates/retrieves booking, returns JSON.
 
 ## Other Key Files
 
@@ -263,9 +259,9 @@ Include `README.md` (setup, run, test, API usage) and `ARCHITECTURE.md` (design 
 ## Before You Code — Checklist
 
 1. `php artisan make:model -mf` for `Booking` (and `Passenger` if modeled separately). Let Artisan scaffold.
-2. Create `app/Providers/FlightSearch/` directory structure: `Contracts/`, `Adapters/`, `ValueObjects/`.
+2. Create `app/FlightSearch/` directory structure: `Contracts/`, `Adapters/`, `ValueObjects/`.
 3. Write the `ProviderContract` and the three adapters BEFORE the controller.
-4. Write the `SearchService` and `BookingService` unit tests BEFORE the endpoints (TDD).
+4. Write the `SearchService` unit tests BEFORE the endpoints (TDD).
 5. `vendor/bin/pint --dirty --format agent` before committing.
 
 # Project Rules: Strict Anti-Slop Policy
