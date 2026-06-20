@@ -68,25 +68,30 @@ class FlightSearchController extends Controller
 
         $result = $this->searchService->search($params);
 
+        $data = [];
+        foreach ($result['flights'] as $f) {
+            $data[] = array_merge($f->toArray(), [
+                'total_price' => round($f->price * $result['passengers'], 2),
+            ]);
+        }
+
+        $providerCounts = [];
+        foreach ($result['flights'] as $f) {
+            $providerCounts[$f->provider] = ($providerCounts[$f->provider] ?? 0) + 1;
+        }
+
         $providers = [];
         foreach ($result['providerResults'] as $r) {
             $meta = [
                 'name' => $r['provider_name'],
                 'status' => $r['status']->value,
-                'offers' => count($r['offers']),
+                'offers' => $providerCounts[$r['provider_name']] ?? 0,
                 'duration_ms' => $r['duration_ms'],
             ];
             if ($r['error_message'] !== null) {
                 $meta['error_message'] = $r['error_message'];
             }
             $providers[] = $meta;
-        }
-
-        $data = [];
-        foreach ($result['flights'] as $f) {
-            $data[] = array_merge($f->toArray(), [
-                'total_price' => round($f->price * $result['passengers'], 2),
-            ]);
         }
 
         $response = [
